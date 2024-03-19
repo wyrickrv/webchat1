@@ -27,30 +27,31 @@ if (isset($_GET['remove']) && $_GET['remove'] == '1') {
 }
 
 
-if (isset($_FILES['pdfDocument'])) {
-    $file = $_FILES['pdfDocument'];
+if (isset($_FILES['uploadDocument'])) {
+    $file = $_FILES['uploadDocument'];
     #echo "<pre>".print_r($_FILES,1)."</pre>"; die("got here");
 
     // Ensure that your script is executable and has the correct shebang line
-    #$command = __DIR__."/pdf_parser.ocr.py ".$file['tmp_name'];
-    #$command = __DIR__."/pdf_parser.py ".$file['tmp_name'];
-    #$command = __DIR__."/parser_multi.py ".$file['tmp_name']." ".basename($file['name']);
-
-    #$command = __DIR__."/pdf_parser.py \"".$file['tmp_name']."\"";
-    $command = __DIR__."/parser_multi.py \"".$file['tmp_name']."\" \"".basename($file['name'])."\"";
-
+    $command = __DIR__."/parser_multi.py \"".$file['tmp_name']."\" \"".basename($file['name'])."\" 2>&1";
 
     #echo $command . "<br><br><br>\n\n\n\n";
     $output = shell_exec($command);
     #echo "<pre>".print_r($output,1)."</pre>"; die("got here");
 
-    // Store the text and the original filename in session variables
-    $_SESSION['document_text'] = $output;
-    $_SESSION['document_name'] = basename($file['name']);
+    if (strpos($output, 'ValueError') === false) {
 
-    #echo "<pre>".print_r($_SESSION,1)."</pre>"; die("got here");
+        // Store the text and the original filename in session variables
+        $_SESSION['document_text'] = $output;
+        $_SESSION['document_name'] = basename($file['name']);
 
-    update_chat_document($user, $chat_id, $_SESSION['document_name'], $_SESSION['document_text']);
+        #echo "<pre>".print_r($_SESSION,1)."</pre>"; die("got here");
+
+        update_chat_document($user, $chat_id, $_SESSION['document_name'], $_SESSION['document_text']);
+
+    } else {
+        $_SESSION['error'] = 'There was an error parsing the uploaded document. Please be sure that it is the correct file type. If you have further problems please reach out to the development team at OIR.';
+
+    }
 
     // Redirect back to the index page
     header('Location: index.php?chat_id='.urlencode($chat_id));

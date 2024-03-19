@@ -47,8 +47,9 @@ function create_chat($user, $title, $summary, $deployment, $document_name, $docu
     global $pdo;
     $guid = createGUID();
     $guid = str_replace('-','',$guid);
-    $stmt = $pdo->prepare("INSERT INTO chat (id, user, title, summary, deployment, document_name, document_text, timestamp) VALUES (:id, :user, :title, :summary, :deployment, :document_name, :document_text, NOW())");
-    $stmt->execute(['id' => $guid, 'user' => $user, 'title' => $title, 'summary' => $summary, 'deployment' => $deployment, 'document_name' => $document_name, 'document_text' => $document_text]);
+    $temperature= $_SESSION['temperature'];
+    $stmt = $pdo->prepare("INSERT INTO chat (id, user, title, summary, deployment, temperature, document_name, document_text, timestamp) VALUES (:id, :user, :title, :summary, :deployment, :temperature, :document_name, :document_text, NOW())");
+    $stmt->execute(['id' => $guid, 'user' => $user, 'title' => $title, 'summary' => $summary, 'deployment' => $deployment, 'temperature'=>$temperature, 'document_name' => $document_name, 'document_text' => $document_text]);
     return $guid;
     #return $pdo->lastInsertId();
 }
@@ -57,8 +58,9 @@ function create_chat($user, $title, $summary, $deployment, $document_name, $docu
 function create_exchange($chat_id, $prompt, $reply) {
     global $pdo;
     $deployment = $_SESSION['deployment'];
-    $stmt = $pdo->prepare("INSERT INTO exchange (chat_id, deployment, prompt, reply, timestamp) VALUES (:chat_id, :deployment, :prompt, :reply, NOW())");
-    $stmt->execute(['chat_id' => $chat_id, 'deployment' => $deployment, 'prompt' => $prompt, 'reply' => $reply]);
+    $temperature= $_SESSION['temperature'];
+    $stmt = $pdo->prepare("INSERT INTO exchange (chat_id, deployment, temperature, prompt, reply, timestamp) VALUES (:chat_id, :deployment, :temperature, :prompt, :reply, NOW())");
+    $stmt->execute(['chat_id' => $chat_id, 'deployment' => $deployment, 'temperature'=>$temperature, 'prompt' => $prompt, 'reply' => $reply]);
     return $pdo->lastInsertId();
 }
 
@@ -123,6 +125,19 @@ function update_deployment($user, $chat_id, $deployment) {
     // prepare a sql statement to update the deployment of a chat where the id matches the $chat_id
     $stmt = $pdo->prepare("update chat set deployment = :deployment where id = :id");
     $stmt->execute(['deployment' => $deployment, 'id' => $chat_id]);
+}
+
+// Update the temperature in the chat table
+function update_temperature($user, $chat_id, $temperature) {
+    global $pdo;
+
+    if (!verify_user_chat($user, $chat_id)) {
+        die("unauthorized");
+    }
+    
+    // prepare a sql statement to update the deployment of a chat where the id matches the $chat_id
+    $stmt = $pdo->prepare("update chat set temperature = :temperature where id = :id");
+    $stmt->execute(['temperature' => $temperature, 'id' => $chat_id]);
 }
 
 // Update the document in the database

@@ -111,16 +111,38 @@ foreach(array_keys($models) as $m) {
                     <textarea class="form-control" id="userMessage" aria-label="Main chat textarea" placeholder="Type your message..." rows="4" ></textarea>
                 </form>
 
-                <form onsubmit="saveMessage()" id="model_select" action="" method="post" onsubmit="saveMessage()" style="display: inline-block; margin-left: 20px; margin-right: 10px; margin-top: 15px; border-top: 1px solid white; ">
-                    <label for="model">Select Model</label>: <select title="Choose between available chat models" name="model" onchange="document.getElementById('model_select').submit();">
+                <form onsubmit="saveMessage()" id="model_select" action="" method="post" style="display: inline-block; margin-left: 20px; margin-right: 10px; margin-top: 15px; border-top: 1px solid white; ">
+                    <label for="model" title="">Select Model</label>: <select title="Choose between available chat models" name="model" onchange="document.getElementById('model_select').submit();">
                         <?php
-                        foreach ($models as $m => $label) {
+                        foreach ($models as $m => $modelconfig) {
+                            #echo '<pre>'.print_r($modelconfig,1).'</pre>';
+                            $label = $modelconfig['label'];
+                            $tooltip = $modelconfig['tooltip'];
                             $sel = ($m == $_SESSION['deployment']) ? 'selected="selected"' : '';
-                            echo '<option value="'.$m.'"'.$sel.'>'.$label.'</option>'."\n";
+                            echo '<option value="'.$m.'"'.$sel.' title="'.$tooltip.'">'.$label.'</option>'."\n";
                         }
                         ?>
                     </select>
                 </form>
+<?php
+
+// THE TEMPERATURE IS ONLY AVAILABLE TO AZURE DEPLOYMENTS
+if ($config[$deployment]['host'] == 'Azure') {
+
+?>
+                <form onsubmit="saveMessage()" id="temperature_select" action="" method="post" style="display: inline-block; margin-left: 20px; margin-right: 10px; margin-top: 15px; border-top: 1px solid white; ">
+                    <label for="temperature">Temperature</label>: <select title="Choose a temperature setting" name="temperature" onchange="document.getElementById('temperature_select').submit();">
+                        <?php
+                        foreach ($temperatures as $t) {
+                            $sel = ($t == $_SESSION['temperature']) ? 'selected="selected"' : '';
+                            echo '<option value="'.$t.'"'.$sel.'>'.$t.'</option>'."\n";
+                        }
+                        ?>
+                    </select>
+                </form>
+<?php 
+}
+?>
                 <form onSubmit="saveMessage();" method="post" action="upload.php" id="document-uploader" enctype="multipart/form-data" style="display: inline-block; margin-top: 15px; margin-left: 30px;">
                     <!-- Hidden input for chat_id -->
                     <input type="hidden" name="chat_id" aria-label="Hidden field with Chat ID" value="<?php echo htmlspecialchars($_GET['chat_id']); ?>">
@@ -130,10 +152,19 @@ foreach(array_keys($models) as $m) {
                             <a href="upload.php?remove=1&chat_id=<?php echo htmlspecialchars($_GET['chat_id']); ?>" style="color: blue">Remove</a>
                         </p>
                     <?php else: ?>
-                        <input type="file" name="pdfDocument" aria-label="File upload button" accept=".pdf,.docx,.pptx,.txt,.md,.json,.xml" style="width:15em;" required onchange="this.form.submit()" />
+                        <input type="file" name="uploadDocument" aria-label="File upload button" accept=".pdf,.docx,.pptx,.txt,.md,.json,.xml" style="width:15em;" required onchange="this.form.submit()" />
                     <?php endif; ?>
-
                 </form>
+
+<?php 
+                    if(!empty($_SESSION['error'])) {
+                        echo "<script>alert('Error: ".$_SESSION['error']."');</script>";
+                        $_SESSION['error']="";
+                        unset($_SESSION['error']);
+        
+                    }
+?>
+
                 <form style="display: inline-block; float: right; margin-top: 15px; margin-right: 30px;">
                     <button title="Print the existing chat session" aria-label="Print button" onClick="printChat()" id="printButton">Print</button>
                 </form>
