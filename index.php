@@ -124,14 +124,8 @@ foreach(array_keys($models) as $m) {
                         ?>
                     </select>
                 </form>
-<?php
-
-// THE TEMPERATURE IS ONLY AVAILABLE TO AZURE DEPLOYMENTS
-if ($config[$deployment]['host'] == 'Azure') {
-
-?>
                 <form onsubmit="saveMessage()" id="temperature_select" action="" method="post" style="display: inline-block; margin-left: 20px; margin-right: 10px; margin-top: 15px; border-top: 1px solid white; ">
-                    <label for="temperature">Temperature</label>: <select title="Choose a temperature setting" name="temperature" onchange="document.getElementById('temperature_select').submit();">
+                    <label for="temperature">Temperature</label>: <select title="Choose a temperature setting between 0 and 2. A temperature of 0 means the responses will be very deterministic (meaning you almost always get the same response to a given prompt). A temperature of 2 means the responses can vary substantially." name="temperature" onchange="document.getElementById('temperature_select').submit();">
                         <?php
                         foreach ($temperatures as $t) {
                             $sel = ($t == $_SESSION['temperature']) ? 'selected="selected"' : '';
@@ -140,9 +134,6 @@ if ($config[$deployment]['host'] == 'Azure') {
                         ?>
                     </select>
                 </form>
-<?php 
-}
-?>
                 <form onSubmit="saveMessage();" method="post" action="upload.php" id="document-uploader" enctype="multipart/form-data" style="display: inline-block; margin-top: 15px; margin-left: 30px;">
                     <!-- Hidden input for chat_id -->
                     <input type="hidden" name="chat_id" aria-label="Hidden field with Chat ID" value="<?php echo htmlspecialchars($_GET['chat_id']); ?>">
@@ -152,7 +143,7 @@ if ($config[$deployment]['host'] == 'Azure') {
                             <a href="upload.php?remove=1&chat_id=<?php echo htmlspecialchars($_GET['chat_id']); ?>" style="color: blue">Remove</a>
                         </p>
                     <?php else: ?>
-                        <input type="file" name="uploadDocument" aria-label="File upload button" accept=".pdf,.docx,.pptx,.txt,.md,.json,.xml" style="width:15em;" required onchange="this.form.submit()" />
+                        <input title="Document types accepted include PDF, XML, JSON, Word, PowerPoint, Text, and Markdown. At this time we do not support Excel or CSV files." type="file" name="uploadDocument" aria-label="File upload button" accept=".pdf,.docx,.pptx,.txt,.md,.json,.xml" style="width:15em;" required onchange="this.form.submit()" />
                     <?php endif; ?>
                 </form>
 

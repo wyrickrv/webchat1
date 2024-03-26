@@ -2,11 +2,15 @@
 // lib.required.php
 require_once 'db.php';
 
-$config = parse_ini_file('/etc/apps/chat_config.ini',true);
+// Determine the environment dynamically
+$environment = strpos($_SERVER['REQUEST_URI'], 'chatdev') !== false ? 'dev' : '';
+$config_file = '/etc/apps/chat' . $environment . '_config.ini';
+$config = parse_ini_file($config_file,true);
+
+#echo '<pre>'.print_r($config,1).'</pre>';
 
 // Start the PHP session to enable session variables
 ini_set('session.cookie_lifetime', 0); // Expires when browser is closed
-
 
 // Start the session, if not already started
 if (session_status() == PHP_SESSION_NONE) {
@@ -35,9 +39,7 @@ if (
 
 $user = $_SESSION['user_data']['userid'];
 
-if (strstr($_SERVER['REQUEST_URI'],'chatdev')) 
-    $application_path = $config['app']['path_dev'];
-else $application_path = $config['app']['path_prod'];
+$application_path = $config['app']['application_path'];
 
 // Verify that there is a chat with this id for this user
 // If a 'chat_id' parameter was passed, store its value as an integer in the session variable 'chat_id'
@@ -47,8 +49,7 @@ if (!verify_user_chat($user, $chat_id)){
     die("Error: there is no chat record for the specified user and chat id. If you need assistance, please contact ".$email_help);
 }
 
-#$models_str = $config['azure']['deployments'];
-$models_str = $config['azure']['deployments_dev'];
+$models_str = $config['azure']['deployments'];
 $models_a = explode(",",$models_str);
 
 $models = array();
@@ -238,7 +239,16 @@ function process_api_response($response, $deployment, $chat_id, $message) {
 
 // Call Mocha API
 function call_mocha_api($base_url, $msg) {
-    $payload = ["user_input" => $msg];
+    #$payload = $msg;
+    $payload = [
+        'messages' => $msg,
+        "max_tokens" => $config['max_tokens'],
+        "temperature" => (float)$_SESSION['temperature'],
+        "frequency_penalty" => 0,
+        "presence_penalty" => 0,
+        "top_p" => 0.95,
+        "stop" => ""
+    ];
     $headers = ['Content-Type: application/json'];
     $response = execute_api_call($base_url, $payload, $headers);
     return $response;
@@ -452,10 +462,11 @@ function get_chat_thread($message, $chat_id, $user)
 
     // Set up the chat messages array to send to the OpenAI API
     $messages = [
-        [
+        /*[
             'role' => 'system',
             'content' => 'Prior exchanges were for context; please respond only to the user\'s next message.'
         ],
+        */
         [
             'role' => 'user',
             'content' => $message
