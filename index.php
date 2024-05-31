@@ -134,6 +134,10 @@ foreach(array_keys($models) as $m) {
                         ?>
                     </select>
                 </form>
+<?php
+#if ($config[$deployment]['host'] == 'Azure')
+#{
+?>
                 <form onSubmit="saveMessage();" method="post" action="upload.php" id="document-uploader" enctype="multipart/form-data" style="display: inline-block; margin-top: 15px; margin-left: 30px;">
                     <!-- Hidden input for chat_id -->
                     <input type="hidden" name="chat_id" aria-label="Hidden field with Chat ID" value="<?php echo htmlspecialchars($_GET['chat_id']); ?>">
@@ -146,7 +150,9 @@ foreach(array_keys($models) as $m) {
                         <input title="Document types accepted include PDF, XML, JSON, Word, PowerPoint, Text, and Markdown. At this time we do not support Excel or CSV files." type="file" name="uploadDocument" aria-label="File upload button" accept=".pdf,.docx,.pptx,.txt,.md,.json,.xml" style="width:15em;" required onchange="this.form.submit()" />
                     <?php endif; ?>
                 </form>
-
+<?php
+#}
+?>
 <?php 
                     if(!empty($_SESSION['error'])) {
                         echo "<script>alert('Error: ".$_SESSION['error']."');</script>";
