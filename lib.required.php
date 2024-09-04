@@ -1,41 +1,41 @@
 <?php
+
+ini_set('session.cookie_lifetime', 0); // Expires when browser is closed
+
 // lib.required.php
 require_once 'db.php';
 
 // Determine the environment dynamically
-$environment = strpos($_SERVER['REQUEST_URI'], 'chatdev') !== false ? 'dev' : '';
-$config_file = '/etc/apps/chat' . $environment . '_config.ini';
-$config = parse_ini_file($config_file,true);
-
+require_once 'get_config.php';
 #echo '<pre>'.print_r($config,1).'</pre>';
 
-// Start the PHP session to enable session variables
-ini_set('session.cookie_lifetime', 0); // Expires when browser is closed
 
 // Start the session, if not already started
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }
 
-if (!isset($_SESSION['LAST_ACTIVITY'])) {
-    $_SESSION['LAST_ACTIVITY'] = time(); // update last activity time stamp
-}
+// Handle the splash screen
+if (empty($_SESSION['splash'])) $_SESSION['splash'] = '';
 
-if (isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY'] > 1800)) {
-    // last request was more than 30 minutes ago
-    session_unset();     // unset $_SESSION variable for the run-time
-    session_destroy();   // destroy session data in storage
-}
-$_SESSION['LAST_ACTIVITY'] = time(); // update last activity time stamp
-
-
-if (
-    (!empty($_SESSION['user_data']['userid']) && $_SESSION['authorized'] !== true) || 
-    $_SESSION['splash'] !== true
-) {
+if ( (!empty($_SESSION['user_data']['userid']) && $_SESSION['authorized'] !== true) || empty($_SESSION['splash']) ) {
     require_once 'splash.php';
     exit;
 }
+
+// Start the PHP session to enable session variables
+$sessionTimeout = $config['session']['timeout'];  // Load session timeout from config
+
+if (isset($_SESSION['LAST_ACTIVITY']) && (time() - $_SESSION['LAST_ACTIVITY'] > $sessionTimeout)) {
+    // last request was more than 30 minutes ago
+    logout();
+}
+$_SESSION['LAST_ACTIVITY'] = time(); // update last activity time stamp
+
+#logout();
+#echo '<pre>'.print_r($_SESSION,1).'</pre>'; #die();
+
+if (empty($_SESSION['user_data'])) $_SESSION['user_data'] = [];
 
 $user = $_SESSION['user_data']['userid'];
 
@@ -68,6 +68,7 @@ while ($i<2.1) {
 
 }
 
+if (empty($_GET['chat_id'])) $_GET['chat_id'] = '';
 // Check if the form has been submitted and set the session variable
 if (isset($_POST['model']) && array_key_exists($_POST['model'], $models)) {
     $deployment = $_SESSION['deployment'] = $_POST['model'];
@@ -109,9 +110,9 @@ if (isAuthenticated()) {
 
 
 } else {
-    #header('Location: index.php');
-    #exit;
+    header('Location: auth_redirect.php');
 
+    /*
     $clientId = $config['openid']['clientId'];
     $callback = $config['openid']['callback'];
 
@@ -129,6 +130,7 @@ if (isAuthenticated()) {
     ]);
 
     header('Location: ' . $authorizationUrl);
+    */
     exit;
 }
 
@@ -285,145 +287,6 @@ function get_gpt_response($message, $chat_id, $user) {
     }
 
     return process_api_response($response, $GLOBALS['deployment'], $chat_id, $message);
-}
-
-
-
-
-
-
-
-
-
-
-function old_but_working_get_gpt_response($message, $chat_id, $user) {
-    // Get the configuration elements
-    global $config, $deployment;
-
-    $api_key = trim($config[$deployment]['api_key'], '"');
-    $host = $config[$deployment]['host'];
-    $base_url = $config[$deployment]['url'];
-    $deployment_name = $config[$deployment]['deployment_name'];
-    $api_version = $config[$deployment]['api_version'];
-    $max_tokens = (int)$config[$deployment]['max_tokens'];
-    $context_limit = (int)($config[$deployment]['context_limit']*1.5);
-    #echo "2 THIS IS THE DEPLOYMENT: {$deployment}\n";
-
-    #echo "2 THIS IS CONFIG: {$host} - {$base_url} - {$deployment_name} \n";
-
-    $msg = get_chat_thread($message, $chat_id, $user);
-
-    // Check if host name is "Mocha" for the special API call
-    if ($host == "Mocha") {
-        #die("Using Mocha");
-        $payload = [
-            "user_input" => $msg
-            #"user_input" => $message
-        ];
-
-        $headers = [
-            'Content-Type: application/json'
-        ];
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $base_url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-        $response = curl_exec($ch);
-
-        if (curl_errno($ch)) {
-            error_log('Curl error: ' . curl_error($ch));
-        }
-
-        curl_close($ch);
-
-        // Parse the response from the API
-        $response_data = json_decode($response, true);
-
-        // Inside the if branch
-        if (isset($response_data['error'])) {
-            error_log('API error: ' . $response_data['error']['message']);
-            return json_encode([
-                'deployment' => $deployment,
-                'error' => true,
-                'message' => ""
-            ]);
-        } else {
-            $response_text = $response_data['response'];
-            create_exchange($chat_id, $message, $response_text);
-            return [
-                'deployment' => $deployment,
-                'error' => false,
-                'message' => $response_text
-            ];
-        }
-
-    } else {
-        $url = $base_url . "/openai/deployments/" . $deployment_name . "/chat/completions?api-version=".$api_version;
-
-        $payload = [
-            'messages' => $msg,
-            "max_tokens" => $max_tokens,
-            "temperature" => 0.7,
-            "frequency_penalty" => 0,
-            "presence_penalty" => 0,
-            "top_p" => 0.95,
-            "stop" => ""
-        ];
-
-        // Define headers for the Azure OpenAI API request
-        $headers = [
-            'Content-Type: application/json',
-            'api-key: ' . $api_key
-        ];
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-        $response = curl_exec($ch);
-
-        if (curl_errno($ch)) {
-            error_log('Curl error: ' . curl_error($ch));
-        }
-
-        curl_close($ch);
-
-        // Parse the response from the Azure OpenAI API
-        $response_data = json_decode($response, true);
-        #print_r($response_data); die();
-
-        // Check if there's an error in the response
-        if (isset($response_data['error'])) {
-            // Log the error message
-            error_log('API error: ' . $response_data['error']['message']);
-            
-            // Return a structured error response
-            return [
-                'deployment' => $deployment,
-                'error' => true,
-                'message' => $response_data['error']['message']
-            ];
-        } else {
-
-            $response_text = $response_data['choices'][0]['message']['content'];
-
-            create_exchange($chat_id, $message, $response_text);
-
-            // Return a structured error response
-            return [
-                'deployment' => $deployment,
-                'error' => false,
-                'message' => $response_text
-            ];
-        }
-    }
 }
 
 function substringWords($text, $numWords) {

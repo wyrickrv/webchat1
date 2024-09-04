@@ -99,7 +99,8 @@ body {
     text-decoration: underline;
 }
 .menu p {
-    min-width: 230px;
+    /*min-width: 230px;*/
+    width: 98%;
 }
 .maincolumn {
     width: 100%;

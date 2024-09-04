@@ -1,4 +1,5 @@
 <?php
+#die("<h2>NHLBI Chat is down for a very brief maintenance.</h2>");
 // Include the library functions and the database connection
 require_once 'lib.required.php'; 
 require_once 'db.php'; 
@@ -25,6 +26,8 @@ foreach(array_keys($models) as $m) {
     <script>
         var application_path = "<?php echo $application_path; ?>";
         var deployments = <?php echo json_encode($deployments_json); ?>;
+        var sessionTimeout = <?php echo $sessionTimeout * 1000; ?>; // Convert seconds to milliseconds
+        var deployment = "<?php echo $deployment; ?>";
 
     </script>
 </head>
@@ -64,6 +67,7 @@ foreach(array_keys($models) as $m) {
                 <p class="newchat"><a title="Create new chat" href="javascript:void(0);" onclick="startNewChat()">+&nbsp;&nbsp;New Chat</a></p>
                 <?php
                 $path = get_path();
+                $chatTitle = '';
                 foreach ($all_chats as $chat) {
                     $class= '';
                     if (!empty($chat_id) && $chat['id'] == $chat_id) {
@@ -116,6 +120,7 @@ foreach(array_keys($models) as $m) {
                         <?php
                         foreach ($models as $m => $modelconfig) {
                             #echo '<pre>'.print_r($modelconfig,1).'</pre>';
+                            if (empty($modelconfig['enabled'])) continue;
                             $label = $modelconfig['label'];
                             $tooltip = $modelconfig['tooltip'];
                             $sel = ($m == $_SESSION['deployment']) ? 'selected="selected"' : '';
@@ -183,32 +188,21 @@ foreach(array_keys($models) as $m) {
             document.querySelector('.menu').classList.toggle('active');
         });
         var chatId = <?php echo json_encode(isset($_GET['chat_id']) ? $_GET['chat_id'] : null); ?>;
-        var user = <?php echo json_encode($user); ?>;
+        var user = <?php echo json_encode(isset($user) ? $user : null); ?>;
+
+
     </script>
     <script src="script.v1.02.js"></script>
+    <script>
+        //document.addEventListener('DOMContentLoaded', function() {
+            var sessionTimer = setTimeout(logoutUser, sessionTimeout);
+        //});
+    </script>
 <script>
 function printChat() {
 window.print();
 }
 
-// When the page is loaded, check if there's a saved userMessage and display it
-/*document.addEventListener('DOMContentLoaded', (event) => {
-var savedMessage = localStorage.getItem('userMessage');
-if (savedMessage) {
-document.getElementById('userMessage').value = savedMessage;
-}
-});
-
-// Each time the userMessage is updated, save it in the local storage
-document.getElementById('userMessage').addEventListener('input', (event) => {
-localStorage.setItem('userMessage', event.target.value);
-});
-
-// After the form is submitted, clear the saved message
-document.getElementById('messageForm').addEventListener('submit', function() {
-localStorage.removeItem('userMessage');
-});
- */
 </script>
 
 </body>
