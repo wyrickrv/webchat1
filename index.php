@@ -28,6 +28,8 @@ foreach(array_keys($models) as $m) {
         var deployments = <?php echo json_encode($deployments_json); ?>;
         var sessionTimeout = <?php echo $sessionTimeout * 1000; ?>; // Convert seconds to milliseconds
         var deployment = "<?php echo $deployment; ?>";
+        var host = "<?php echo $config[$deployment]['host'] ; ?>";
+        var temperature = "<?php echo $_SESSION['temperature']; ?>";
 
     </script>
 </head>
@@ -64,6 +66,7 @@ foreach(array_keys($models) as $m) {
 
             <!-- Menu content here -->
             <div class="p-2 "><!-- Start Menu top content -->
+                <p class="aboutChat"><a title="About text" href="javascript:void(0);" onclick="showAboutUs()">About NHLBI Chat</a></p>
                 <p class="newchat"><a title="Create new chat" href="javascript:void(0);" onclick="startNewChat()">+&nbsp;&nbsp;New Chat</a></p>
                 <?php
                 $path = get_path();
@@ -101,12 +104,17 @@ foreach(array_keys($models) as $m) {
         </nav> <!-- End the menu column -->
 
         <main id="main-content" class="col-12 col-md-10 d-flex align-items-start flex-column main-content">
+
+            <div class="aboutChatWindow">
+                <button class="closeAbout" onclick="closeAboutUs()" aria-label="Close About Us">X</button>
+                <h4>About NHLBI Chat</h4>
+                <?php echo $config['app']['disclaimer_text']; ?>
+            </div>
+
             <h1 class="print-title"><?php echo $chatTitle;?></h1>
 
-
-
             <!-- Main content here -->
-            <div id="messageList" class="p-2 maincolumn maincol-top chat-container"><!-- Flex item chat body top -->
+            <div id="messageList" class="p-2 maincolumn maincol-top chat-container" aria-live="polite"><!-- Flex item chat body top -->
                     <!-- Chat messages will be added here -->
            </div><!-- End Flex item chat body top -->
 

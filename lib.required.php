@@ -9,7 +9,6 @@ require_once 'db.php';
 require_once 'get_config.php';
 #echo '<pre>'.print_r($config,1).'</pre>';
 
-
 // Start the session, if not already started
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
@@ -111,138 +110,42 @@ if (isAuthenticated()) {
 
 } else {
     header('Location: auth_redirect.php');
-
-    /*
-    $clientId = $config['openid']['clientId'];
-    $callback = $config['openid']['callback'];
-
-    $scope = 'openid profile';  // Asking for identity and profile information
-    $state = bin2hex(random_bytes(16));  // Generate a random state
-    $_SESSION['oauth2state'] = $state;  // Store state in session for later validation
-
-    $authorizationUrlBase = $config['openid']['authorization_url_base'];
-    $authorizationUrl = $authorizationUrlBase . '?' . http_build_query([
-        'client_id' => $clientId,
-        'redirect_uri' => $callback,
-        'response_type' => 'code',
-        'scope' => $scope,
-        'state' => $state
-    ]);
-
-    header('Location: ' . $authorizationUrl);
-    */
     exit;
 }
 
 #echo "<pre>". print_r($_SESSION,1) ."</pre>";
 #echo "<pre>". print_r($_SERVER,1) ."</pre>";
 
-// This function will check if the user is authenticated
-function isAuthenticated() {
-    return isset($_SESSION['tokens']) && isset($_SESSION['tokens']['access_token']);
+function approximateTokenCountByChars($text) {
+    $charCount = strlen($text);
+    return ceil($charCount / 4); // Rough approximation: 4 characters per token
 }
 
-// Log the user out
-function logout() {
-
-    // start the session if not already started
-    #session_start();
-
-    // Unset all session variables
-    $_SESSION = array();
-
-    // If it's desired to kill the session, also delete the session cookie.
-    // Note: This will destroy the session, and not just the session data!
-    if (ini_get("session.use_cookies")) {
-        $params = session_get_cookie_params();
-        setcookie(session_name(), '', time() - 42000,
-            $params["path"], $params["domain"],
-            $params["secure"], $params["httponly"]
-        );
-    }
-
-    // Finally, destroy the session.
-    session_destroy();
-
-}
-
-function get_path() {
-    $path = strstr($_SERVER['PHP_SELF'],'chatdev') ? 'chatdev' : 'chat';
-    return $path;
-}
-
-// Get the recent messages from the database for the current chat session
-function get_recent_messages($chat_id, $user) {
-    if (!empty($chat_id)) {
-        return get_all_exchanges($chat_id, $user);
-    }
-    return [];
-}
-
-
-
-
-
-
-
-// Load configuration
-function load_configuration($deployment) {
-    global $config;
-    return [
-        'api_key' => trim($config[$deployment]['api_key'], '"'),
-        'host' => $config[$deployment]['host'],
-        'base_url' => $config[$deployment]['url'],
-        'deployment_name' => $config[$deployment]['deployment_name'],
-        'api_version' => $config[$deployment]['api_version'],
-        'max_tokens' => (int)$config[$deployment]['max_tokens'],
-        'context_limit' => (int)($config[$deployment]['context_limit']*1.5),
+// Call Azure OpenAI API
+function call_azure_api($active_config, $msg) {
+    $url = $active_config['base_url'] . "/openai/deployments/" . $active_config['deployment_name'] . "/chat/completions?api-version=".$active_config['api_version'];
+    $payload = [
+        'messages' => $msg,
+        "max_tokens" => $active_config['max_tokens'],
+        "temperature" => (float)$_SESSION['temperature'],
+        "frequency_penalty" => 0,
+        "presence_penalty" => 0,
+        "top_p" => 0.95,
+        "stop" => ""
     ];
-}
-
-// Execute API Call
-function execute_api_call($url, $payload, $headers) {
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-
-    $response = curl_exec($ch);
-
-    if (curl_errno($ch)) {
-        error_log('Curl error: ' . curl_error($ch));
-    }
-
-    curl_close($ch);
+    $headers = [
+        'Content-Type: application/json',
+        'api-key: ' . $active_config['api_key']
+    ];
+    $response = execute_api_call($url, $payload, $headers);
     return $response;
-}
-
-// Process API Response
-function process_api_response($response, $deployment, $chat_id, $message) {
-    $response_data = json_decode($response, true);
-    if (isset($response_data['error'])) {
-        error_log('API error: ' . $response_data['error']['message']);
-        return [
-            'deployment' => $deployment,
-            'error' => true,
-            'message' => $response_data['error']['message']
-        ];
-    } else {
-        $response_text = $response_data['response'] ?? $response_data['choices'][0]['message']['content'];
-        create_exchange($chat_id, $message, $response_text);
-        return [
-            'deployment' => $deployment,
-            'error' => false,
-            'message' => $response_text
-        ];
-    }
 }
 
 // Call Mocha API
 function call_mocha_api($base_url, $msg) {
     #$payload = $msg;
     $payload = [
+        "model" => "llama3:70b",
         'messages' => $msg,
         "max_tokens" => $config['max_tokens'],
         "temperature" => (float)$_SESSION['temperature'],
@@ -256,85 +159,46 @@ function call_mocha_api($base_url, $msg) {
     return $response;
 }
 
-// Call Azure OpenAI API
-function call_azure_api($config, $msg) {
-    $url = $config['base_url'] . "/openai/deployments/" . $config['deployment_name'] . "/chat/completions?api-version=".$config['api_version'];
-    $payload = [
-        'messages' => $msg,
-        "max_tokens" => $config['max_tokens'],
-        "temperature" => (float)$_SESSION['temperature'],
-        "frequency_penalty" => 0,
-        "presence_penalty" => 0,
-        "top_p" => 0.95,
-        "stop" => ""
-    ];
-    $headers = [
-        'Content-Type: application/json',
-        'api-key: ' . $config['api_key']
-    ];
-    $response = execute_api_call($url, $payload, $headers);
+// Execute API Call
+function execute_api_call($url, $payload, $headers) {
+    #print($url."\n");
+    #print_r($headers);
+    #print_r($payload);
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+    $response = curl_exec($ch);
+    #print($response); die();
+
+    if (curl_errno($ch)) {
+        error_log('Curl error: ' . curl_error($ch));
+        print('Curl error: ' . curl_error($ch));
+        die("DEAD BECAUSE OF AN ERROR");
+    }
+
+    curl_close($ch);
+    #print("GOT TO THE GET_EXECUTE API CALL FUNCTION");
     return $response;
 }
 
-function get_gpt_response($message, $chat_id, $user) {
-    $config = load_configuration($GLOBALS['deployment']);
-    $msg = get_chat_thread($message, $chat_id, $user);
-
-    if ($config['host'] == "Mocha") {
-        $response = call_mocha_api($config['base_url'], $msg);
-    } else {
-        $response = call_azure_api($config, $msg);
-    }
-
-    return process_api_response($response, $GLOBALS['deployment'], $chat_id, $message);
-}
-
-function substringWords($text, $numWords) {
-    // Split the text into words
-    $words = explode(' ', $text);
-    
-    // Select a subset of words based on the specified number
-    $selectedWords = array_slice($words, 0, $numWords);
-    
-    // Join the selected words back together into a string
-    $subString = implode(' ', $selectedWords);
-    
-    return $subString;
-}
-
-function get_chat_thread($message, $chat_id, $user)
+function get_chat_thread($message, $chat_id, $user, $active_config)
 {
-    global $config,$deployment;
-
-    $context_limit = (int)$config[$deployment]['context_limit'];
+    $context_limit = (int)$active_config['context_limit'];
     #echo "context limit: " . $context_limit;
 
+    $messages = [];
     if (!empty($_SESSION['document_text'])) {
-        $messages = [
-            [
-                'role' => 'system',
-                'content' => $_SESSION['document_text']
-            ],
-            [
-                'role' => 'user',
-                'content' => $message
-            ]
-        ];
+        $messages[] = ['role' => 'system','content' => $_SESSION['document_text']];
+        $messages[] = ['role' => 'user','content' => $message];
+
         return $messages;
     }
-
-    // Set up the chat messages array to send to the OpenAI API
-    $messages = [
-        /*[
-            'role' => 'system',
-            'content' => 'Prior exchanges were for context; please respond only to the user\'s next message.'
-        ],
-        */
-        [
-            'role' => 'user',
-            'content' => $message
-        ]
-    ];
+    // Add the user's prompt at the end
+    $messages[] = ["role" => "user", "content" => $message];
 
 
     // Add the last 5 exchanges from the recent chat history to the messages array
@@ -377,8 +241,107 @@ function get_chat_thread($message, $chat_id, $user)
     return $messages;
 }
 
-function approximateTokenCountByChars($text) {
-    $charCount = strlen($text);
-    return ceil($charCount / 4); // Rough approximation: 4 characters per token
+function get_gpt_response($message, $chat_id, $user) {
+    $active_config = load_configuration($GLOBALS['deployment']);
+    $msg = get_chat_thread($message, $chat_id, $user, $active_config);
+
+    if ($active_config['host'] == "Mocha") {
+        $response = call_mocha_api($active_config['base_url'], $msg);
+    } else {
+        $response = call_azure_api($active_config, $msg);
+    }
+
+    return process_api_response($response, $GLOBALS['deployment'], $chat_id, $message);
 }
+
+function get_path() {
+    $path = strstr($_SERVER['PHP_SELF'],'chatdev') ? 'chatdev' : 'chat';
+    return $path;
+}
+
+// Get the recent messages from the database for the current chat session
+function get_recent_messages($chat_id, $user) {
+    if (!empty($chat_id)) {
+        return get_all_exchanges($chat_id, $user);
+    }
+    return [];
+}
+
+// This function will check if the user is authenticated
+function isAuthenticated() {
+    return isset($_SESSION['tokens']) && isset($_SESSION['tokens']['access_token']);
+}
+
+// Load configuration
+function load_configuration($deployment) {
+    global $config;
+    return [
+        'api_key' => trim($config[$deployment]['api_key'], '"'),
+        'host' => $config[$deployment]['host'],
+        'base_url' => $config[$deployment]['url'],
+        'deployment_name' => $config[$deployment]['deployment_name'],
+        'api_version' => $config[$deployment]['api_version'],
+        'max_tokens' => (int)$config[$deployment]['max_tokens'],
+        'context_limit' => (int)($config[$deployment]['context_limit']*1.5),
+    ];
+}
+
+// Log the user out
+function logout() {
+
+    // start the session if not already started
+    #session_start();
+
+    // Unset all session variables
+    $_SESSION = array();
+
+    // If it's desired to kill the session, also delete the session cookie.
+    // Note: This will destroy the session, and not just the session data!
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000,
+            $params["path"], $params["domain"],
+            $params["secure"], $params["httponly"]
+        );
+    }
+
+    // Finally, destroy the session.
+    session_destroy();
+
+}
+
+// Process API Response
+function process_api_response($response, $deployment, $chat_id, $message) {
+    $response_data = json_decode($response, true);
+    if (isset($response_data['error'])) {
+        error_log('API error: ' . $response_data['error']['message']);
+        return [
+            'deployment' => $deployment,
+            'error' => true,
+            'message' => $response_data['error']['message']
+        ];
+    } else {
+        $response_text = $response_data['response'] ?? $response_data['choices'][0]['message']['content'];
+        create_exchange($chat_id, $message, $response_text);
+        return [
+            'deployment' => $deployment,
+            'error' => false,
+            'message' => $response_text
+        ];
+    }
+}
+
+function substringWords($text, $numWords) {
+    // Split the text into words
+    $words = explode(' ', $text);
+    
+    // Select a subset of words based on the specified number
+    $selectedWords = array_slice($words, 0, $numWords);
+    
+    // Join the selected words back together into a string
+    $subString = implode(' ', $selectedWords);
+    
+    return $subString;
+}
+
 

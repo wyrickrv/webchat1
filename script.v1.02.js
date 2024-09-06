@@ -29,6 +29,21 @@ function logoutUser() {
     window.location.href = "index.php";
 }
 
+function showAboutUs() {
+    var aboutWindow = document.querySelector('.aboutChatWindow');
+    var aboutCloser = document.querySelector('.closeAbout');
+    aboutWindow.classList.add('show');  // Add the 'show' class to make it visible
+    aboutCloser.focus();  // Give focus to the close button
+}
+
+function closeAboutUs() {
+    var aboutWindow = document.querySelector('.aboutChatWindow');
+    aboutWindow.classList.remove('show');  // Remove the 'show' class to hide it
+    var userMessage = document.getElementById('userMessage'); // Assuming 'userMessage' is the ID of your input
+    userMessage.focus();  // Set focus back to the message input
+}
+
+
 // Modify the event listener for DOMContentLoaded
 document.addEventListener('DOMContentLoaded', (event) => {
     console.log("DOMContentLoaded - Current chat ID: ", chatId);
@@ -47,13 +62,6 @@ document.getElementById('userMessage').addEventListener('input', (event) => {
     console.log("Input event for chat ID " + chatId);
     localStorage.setItem('chatDraft_' + chatId, event.target.value);
     console.log("Saved draft message for chat ID " + chatId + ": ", event.target.value);
-});
-
-$('#messageForm').submit(function(e) {
-    console.log("Form submission for chat ID " + chatId);
-    // Rest of the code...
-    localStorage.removeItem('chatDraft_' + chatId);
-    console.log("Cleared draft message for chat ID " + chatId);
 });
 
 function sanitizeString(str) {
@@ -128,9 +136,19 @@ function deleteChat(chatId) {
                 // Reset the session timer on every successful AJAX call
                 resetSessionTimer();
 
-                // Reload the page to refresh the list of chats
-                //location.reload();
-                window.location.href = "/"+application_path+"/";
+                // Extract the base URL and current chat ID from the current URL
+                var baseUrl = window.location.origin + window.location.pathname;
+                var currentChatId = baseUrl.split('/').pop();
+
+                // Determine the appropriate redirect
+                if (chatId === currentChatId || currentChatId === application_path || currentChatId === 'index.php') {
+                    // If deleting the current chat or there's no specific chat ID,
+                    // redirect to the base chat page
+                    window.location.href = baseUrl.replace(/\/[^\/]*$/, '') + "/";
+                } else {
+                    // Otherwise, redirect back to the same chat
+                    window.location.href = baseUrl;
+                }
             }
         });
     }
@@ -177,52 +195,22 @@ function submitEdit(chatId) {
 }
 
 $(document).ready(function(){
-    chatContainer = $(".chat-container");
+    var chatContainer = $(".chat-container");
     var userMessage = $("#userMessage");
 
     // Set focus on the message input
     userMessage.focus();
 
-    /*
-    $('#username').hover(function() {
-        $('.logout-link').show();
-    }, function() {
-        $('.logout-link').hide();
-    });
-    */
-    console.log(chatId)
-    $.ajax({
-        url: "get_messages.php",
-        data: { chat_id: chatId, user: user },
-        dataType: 'json',
-        success: function(chatMessages) {
-                resetSessionTimer(); // Reset the session timer on every successful AJAX call
+    console.log(chatId);
 
-            // Display messages from the selected chat
-            chatMessages.forEach(function (message) {
-                // Sanitize the received data
-                var sanitizedPrompt = sanitizeString(message.prompt).replace(/\n/g, '<br>');
-                var sanitizedReply = sanitizeString(message.reply).replace(/\n/g, '<br>');
+    // Initially load messages
+    loadMessages();
 
-                // Display the user message (prompt)
-                var userMessageElement = $('<div class="message user-message"></div>').html(sanitizedPrompt);
-                userMessageElement.prepend('<img src="images/user.png" class="user-icon" alt="User icon">'); // Add user icon
-                chatContainer.append(userMessageElement);
-                
-                // Check if the deployment configuration exists
-                if (deployments[message.deployment]) {
-                    var imgSrc = 'images/' + deployments[message.deployment].image;
-                    var imgAlt = deployments[message.deployment].image_alt;
-
-                    // Display the assistant message (reply)
-                    var assistantMessageElement = $('<div class="message assistant-message"></div>').html(sanitizedReply);
-                    assistantMessageElement.prepend('<img src="' + imgSrc + '" alt="' + imgAlt + '" class="openai-icon">');
-                    chatContainer.append(assistantMessageElement);
-                }
-            });
-
-            // Scroll to bottom after displaying messages
-            scrollToBottom();
+    // Event listener for the Enter key press
+    userMessage.on("keydown", function (e) {
+        if (e.keyCode === 13 && !e.shiftKey) {
+            e.preventDefault();
+            $('#messageForm').submit();
         }
     });
 
@@ -245,25 +233,52 @@ $(document).ready(function(){
         deleteChat(chatId);
     });
 
+    function loadMessages() {
+        $.ajax({
+            url: "get_messages.php",
+            data: { chat_id: chatId, user: user },
+            dataType: 'json',
+            success: function(chatMessages) {
+                resetSessionTimer(); // Reset the session timer on every successful AJAX call
+                displayMessages(chatMessages);
+                scrollToBottom(); // Scroll to bottom after displaying messages
+            }
+        });
+    }
+
+    function displayMessages(chatMessages) {
+        chatMessages.forEach(function (message) {
+            console.log(deployments)
+            console.log(message)
+            var sanitizedPrompt = sanitizeString(message.prompt).replace(/\n/g, '<br>');
+            var sanitizedReply = sanitizeString(message.reply).replace(/\n/g, '<br>');
+
+            var userMessageElement = $('<div class="message user-message"></div>').html(sanitizedPrompt);
+            userMessageElement.prepend('<img src="images/user.png" class="user-icon">');
+            chatContainer.append(userMessageElement);
+
+            if (deployments[message.deployment]) {
+                var imgSrc = 'images/' + deployments[message.deployment].image;
+                var imgAlt = deployments[message.deployment].image_alt;
+                var assistantMessageElement = $('<div class="message assistant-message"></div>').html(sanitizedReply);
+                assistantMessageElement.prepend('<img src="' + imgSrc + '" alt="' + imgAlt + '" class="openai-icon">');
+                chatContainer.append(assistantMessageElement);
+            }
+        });
+    }
     $(document).on('click', '.edit-confirm-icon', function () {
         var chatId = $(this).prev().attr('id').split('-')[2];
         submitEdit(chatId);
     });
 
-    // Event listener for the Enter key press
-    userMessage.on("keydown", function (e) {
-        if (e.keyCode == 13 && !e.shiftKey) {
-            e.preventDefault();
-            $('#messageForm').submit();
-        }
-    });
-
     // Event listener for form submission
     $('#messageForm').submit(function(e) {
         e.preventDefault();
+        console.log("Form submission for chat ID " + chatId);
+
         var rawMessageContent = userMessage.val().trim();
         var sanitizedMessageContent = replaceNonAsciiCharacters(rawMessageContent);
-        
+
         // Optionally, show a warning if the message was modified
         if (sanitizedMessageContent !== rawMessageContent) {
             if (!confirm("Your message contains some special characters that might cause issues. Click OK to send the modified message or Cancel to edit your message.")) {
@@ -273,18 +288,13 @@ $(document).ready(function(){
 
         var messageContent = base64EncodeUnicode(sanitizedMessageContent); // Encode in Base64 UTF-8
 
-
-
-    // Clear the textarea and localStorage right after form submission
-    userMessage.val("");
-    localStorage.removeItem('chatDraft_' + chatId);
-    console.log("Form submitted and message cleared for chat ID " + chatId);
-
-
-
+        // Clear the textarea and localStorage right after form submission
+        userMessage.val("");
+        localStorage.removeItem('chatDraft_' + chatId);
+        console.log("Form submitted and message cleared for chat ID " + chatId);
 
         if (messageContent !== "") {
-            userMessage.val("");
+            //userMessage.val("");
             $.ajax({
                 type: "POST",
                 url: "ajax_handler.php",
@@ -324,7 +334,7 @@ $(document).ready(function(){
                     }
                     
                     if(gpt_response === null ||gpt_response === undefined ) {
-                        gpt_response = "The message could not be processed."
+                        gpt_response = "The message could not be processed.";
                     } 
 
                     if (gpt_response.startsWith('```') && gpt_response.endsWith('```')) {
@@ -336,7 +346,7 @@ $(document).ready(function(){
                     }
 
                     if (jsonResponse.new_chat_id) {
-                        window.location.href = "/"+application_path+"/" + jsonResponse.new_chat_id;
+                        window.location.href = "/" + application_path + "/" + jsonResponse.new_chat_id;
                     }
 
                     var userMessageDecoded = atob(messageContent);

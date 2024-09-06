@@ -79,7 +79,9 @@ body {
     overflow: hidden;
     background-color: #343a40;
     color: white;
-    padding: 15px;
+    font-size: 0.8vw;
+
+    /*padding: 15px;*/
     /*
     width: 275px !important;
     flex: none !important; /* This prevents the column from growing or shrinking */
@@ -99,8 +101,9 @@ body {
     text-decoration: underline;
 }
 .menu p {
+    width: 14%;
     /*min-width: 230px;*/
-    width: 98%;
+    width: 100%;
 }
 .maincolumn {
     width: 100%;
@@ -133,8 +136,8 @@ body {
 .newchat {
     border: solid gray 1px;
     border-radius: 5px;
-    padding: 10px;
-    margin-top: 10px; 
+    padding: 4px 10px 2px 10px;
+    margin-top: 5px; 
     min-width: 230px;
 }
 .chat-item {
@@ -200,6 +203,62 @@ body {
 }
 
 #printButton {
+}
+
+.aboutChat {
+    background: gray;
+    border: solid gray 1px;
+    border-radius: 5px;
+    padding: 4px 10px 2px 10px;
+    margin-top: 5px; 
+    min-width: 230px;
+}
+
+.aboutChatWindow {
+    display: none;  /* Hide by default */
+    position: fixed;
+    top: 10%;  /* Start from a slightly lower point */
+    left: 50%;
+    transform: translate(-50%, 0);
+    width: 80%;  /* Adjust width to be more responsive */
+    max-width: 600px;  /* Limit maximum width */
+    max-height: 70vh;  /* Limit the height to 70% of the viewport */
+    padding: 20px;
+    background-color: #f4f4f9;
+    border: 1px solid #ccc;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    border-radius: 5px;
+    z-index: 1000;
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+    opacity: 0;  /* Start invisible */
+    overflow-y: auto;  /* Allow scrolling if content is too tall */
+}
+
+.aboutChatWindow.show {
+    display: block;
+    opacity: 1;  /* Make visible */
+    transform: translate(-50%, 0) scale(1);
+}
+
+.closeAbout {
+    position: sticky;
+    top: 0;
+    right: 10px;
+    float: right;
+    cursor: pointer;
+    font-weight: inherit;
+    color: #333;
+    margin-bottom: 10px;
+    background-color: #fff;
+    padding: 5px;
+    border: none;
+    border-radius: 20%;
+    /*box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);*/
+}
+
+.closeAbout:focus {
+    outline: 2px solid #0056b3;  /* Highlight the button when focused */
+    background-color: #bbb;       /* Change the background color on focus */
 }
 
 /* Show the navbar with the hamburger menu on small screens */
