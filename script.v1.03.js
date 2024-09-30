@@ -357,6 +357,7 @@ function addCopyButton(messageElement, rawMessageContent) {
     messageElement.css('position', 'relative');
 
     // Initially hide the button
+    /*
     copyButton.hide();
 
     // Show the button on mouse over
@@ -368,6 +369,7 @@ function addCopyButton(messageElement, rawMessageContent) {
     messageElement.on('mouseout', function() {
         copyButton.hide();
     });
+    */
 
     // Copy the raw content to clipboard on click
     copyButton.on('click', function() {

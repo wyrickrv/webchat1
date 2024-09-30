@@ -245,7 +245,7 @@ code {
         transition: background-color 0.3s;
     bottom: 4px;
     left: 4px;
-    display: none;
+    /*display: none;*/
     font-size: 16px;
 }
 

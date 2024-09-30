@@ -3,6 +3,7 @@
 // Include the library functions and the database connection
 require_once 'lib.required.php'; 
 require_once 'db.php'; 
+# phpinfo();
 
 $username = $_SESSION['user_data']['name'];
 
