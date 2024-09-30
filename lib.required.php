@@ -251,7 +251,7 @@ function get_gpt_response($message, $chat_id, $user) {
         $response = call_azure_api($active_config, $msg);
     }
 
-    return process_api_response($response, $GLOBALS['deployment'], $chat_id, $message);
+    return process_api_response($response, $GLOBALS['deployment'], $chat_id, $message, $msg);
 }
 
 function get_path() {
@@ -274,7 +274,14 @@ function isAuthenticated() {
 
 // Load configuration
 function load_configuration($deployment) {
-    global $config;
+    global $config, $deployment;
+    
+    // Check if the deployment is enabled
+    if (!isset($config[$deployment]['enabled']) || $config[$deployment]['enabled'] == false || $config[$deployment]['enabled'] === 'false') {
+        // Reassign deployment to default if not enabled
+        $_SESSION['deployment'] = $GLOBALS['deployment'] = $deployment = $config['azure']['default'];
+    }
+
     return [
         'api_key' => trim($config[$deployment]['api_key'], '"'),
         'host' => $config[$deployment]['host'],
@@ -310,19 +317,58 @@ function logout() {
 
 }
 
-// Process API Response
-function process_api_response($response, $deployment, $chat_id, $message) {
+/**
+ * Logs detailed error information using PHP's standard error logging system.
+ *
+ * @param string $message    The user message that triggered the API call.
+ * @param string $api_error  The error message returned by the API.
+ */
+function log_error_details($msg, $message, $api_error) {
+    // Prepare the log entry with detailed information
+    $log_entry = "==== Error Occurred ====\n";
+    $log_entry .= "Timestamp: " . date('Y-m-d H:i:s') . "\n";
+    $log_entry .= "User Message: " . $message . "\n";
+    $log_entry .= "Message Context: " . print_r($msg, true) . "\n";
+    $log_entry .= "API Error: " . $api_error . "\n";
+    $log_entry .= "Session Data: " . print_r($_SESSION, true) . "\n";
+    $log_entry .= "Server Data: " . print_r($_SERVER, true) . "\n";
+    $log_entry .= "========================\n";
+
+    // Send the log entry to PHP's standard error log
+    error_log($log_entry);
+}
+
+/**
+ * Processes the API response and handles errors.
+ *
+ * @param string $response    The raw API response.
+ * @param string $deployment  Deployment identifier.
+ * @param int    $chat_id     Chat identifier.
+ * @param string $message     The original user message.
+ * @param mixed  $msg         Additional message data.
+ *
+ * @return array An associative array containing the processing result.
+ */
+function process_api_response($response, $deployment, $chat_id, $message, $msg) {
     $response_data = json_decode($response, true);
     if (isset($response_data['error'])) {
-        error_log('API error: ' . $response_data['error']['message']);
+        $api_error_message = $response_data['error']['message'];
+        
+        // Log detailed error information using PHP's standard error log
+        log_error_details($msg, $message, $api_error_message);
+        
         return [
             'deployment' => $deployment,
             'error' => true,
-            'message' => $response_data['error']['message']
+            'message' => $api_error_message
         ];
     } else {
+        // Get the response text, process it for any special handling (code blocks, etc.)
         $response_text = $response_data['response'] ?? $response_data['choices'][0]['message']['content'];
+
+        // Save to the database
         create_exchange($chat_id, $message, $response_text);
+
         return [
             'deployment' => $deployment,
             'error' => false,

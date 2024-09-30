@@ -20,9 +20,24 @@ foreach(array_keys($models) as $m) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $config['app']['app_title']; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="style.v1.02.css" rel="stylesheet">
-    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.4.0/styles/default.min.css">
-    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.4.0/highlight.min.js"></script>
+    <link href="style.v1.03.css" rel="stylesheet">
+    <!-- Highlight.js CSS -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
+
+    <!-- Highlight.js Library -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+
+    <!-- Include marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Initialize Highlight.js -->
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            hljs.highlightAll();
+        });
+    </script>
+
+    <!-- Application-specific variables passed from PHP -->
     <script>
         var application_path = "<?php echo $application_path; ?>";
         var deployments = <?php echo json_encode($deployments_json); ?>;
@@ -30,8 +45,11 @@ foreach(array_keys($models) as $m) {
         var deployment = "<?php echo $deployment; ?>";
         var host = "<?php echo $config[$deployment]['host'] ; ?>";
         var temperature = "<?php echo $_SESSION['temperature']; ?>";
+        var chatContainer;
+
 
     </script>
+
 </head>
 <body>
 
@@ -65,7 +83,8 @@ foreach(array_keys($models) as $m) {
         <nav class="col-12 col-md-2 d-flex align-items-start flex-column menu">
 
             <!-- Menu content here -->
-            <div class="p-2 "><!-- Start Menu top content -->
+            <div class="p-2 ">
+            <!-- Start Menu top content -->
                 <p class="aboutChat"><a title="About text" href="javascript:void(0);" onclick="showAboutUs()">About NHLBI Chat</a></p>
                 <p class="newchat"><a title="Create new chat" href="javascript:void(0);" onclick="startNewChat()">+&nbsp;&nbsp;New Chat</a></p>
                 <?php
@@ -87,9 +106,15 @@ foreach(array_keys($models) as $m) {
                 ?>
 
             </div> <!-- End Menu top content -->
-    
 
             <div class="mt-auto p-2"><!-- Start Menu bottom content -->
+
+                <!-- Session Info Display (for development) -->
+                <p id="session-info" style="color: #FFD700; margin-top: 10px; display: none;">
+                    <!-- Session information will be displayed here -->
+                </p>
+    
+
                 <!-- Adding the feedback link -->
                 <p class="feedback "><?php echo $config['app']['feedback_text']; ?>
                 </br>
@@ -108,6 +133,19 @@ foreach(array_keys($models) as $m) {
             <div class="aboutChatWindow">
                 <button class="closeAbout" onclick="closeAboutUs()" aria-label="Close About Us">X</button>
                 <h4>About NHLBI Chat</h4>
+
+                    <p class="newchat" style="text-align: center; margin-top: 20px;">
+                        <?php echo $config['app']['help_text1']; ?>
+                        <span style="display: flex; justify-content: space-between; width: 90%; margin: 20px auto;">
+                            <a title="Open a link to the Teams interface" href="<?php echo $config['app']['teams_link']; ?>" target="_blank">Connect in Teams</a>
+                            <a title="Open a link to the NHLBI Intranet interface" href="<?php echo $config['app']['intranet_link']; ?>" target="_blank">Overview and Instructions</a>
+                            <a title="Open the training video in a new window" href="<?php echo $config['app']['video_link']; ?>" target="_blank">Training Video</a>
+                            <a title="Open a new window to submit feedback" href="<?php echo $config['app']['feedback_link']; ?>" target="_blank">Submit Feedback</a>
+                        </span>
+                    </p>
+
+
+
                 <?php echo $config['app']['disclaimer_text']; ?>
             </div>
 
@@ -119,9 +157,27 @@ foreach(array_keys($models) as $m) {
            </div><!-- End Flex item chat body top -->
 
             <div class="maincolumn maincol-bottom"><!-- Chat body bottom -->
-                <form id="messageForm">
-                    <textarea class="form-control" id="userMessage" aria-label="Main chat textarea" placeholder="Type your message..." rows="4" ></textarea>
-                </form>
+
+<!--
+<form id="messageForm">
+    <textarea class="form-control" id="userMessage" aria-label="Main chat textarea" placeholder="Type your message..." rows="4" required></textarea><br>
+    <button type="submit" class="btn btn-primary mt-2">Submit</button>
+</form>
+-->
+
+
+<form id="messageForm" class="chat-input-form">
+    <div class="input-container">
+        <textarea class="form-control" id="userMessage" aria-label="Main chat textarea" placeholder="Type your message..." rows="4" required></textarea>
+        <button type="submit" class="submit-button" aria-label="Send message">
+            <!-- Icon (paper plane) -->
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="send-icon">
+                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+        </button>
+    </div>
+</form>
+
 
                 <form onsubmit="saveMessage()" id="model_select" action="" method="post" style="display: inline-block; margin-left: 20px; margin-right: 10px; margin-top: 15px; border-top: 1px solid white; ">
                     <label for="model" title="">Select Model</label>: <select title="Choose between available chat models" name="model" onchange="document.getElementById('model_select').submit();">
@@ -197,20 +253,17 @@ foreach(array_keys($models) as $m) {
         });
         var chatId = <?php echo json_encode(isset($_GET['chat_id']) ? $_GET['chat_id'] : null); ?>;
         var user = <?php echo json_encode(isset($user) ? $user : null); ?>;
+        var tmr = document.getElementById('username');
+</script>
 
+    <!-- Include Session Handler JS -->
+    <script src="session_handler.js"></script>
 
-    </script>
-    <script src="script.v1.02.js"></script>
-    <script>
-        //document.addEventListener('DOMContentLoaded', function() {
-            var sessionTimer = setTimeout(logoutUser, sessionTimeout);
-        //});
-    </script>
+<script src="script.v1.03.js"></script>
 <script>
-function printChat() {
-window.print();
-}
-
+    function printChat() {
+        window.print();
+    }
 </script>
 
 </body>

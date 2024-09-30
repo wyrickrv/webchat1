@@ -2,10 +2,7 @@
 // db.php
 
 // Parse the configuration file
-$fn = '/etc/apps/chat_config.ini';
-$config = parse_ini_file($fn,true);
-#if (file_exists($fn)) echo "got the file: $fn\n";
-#else echo "don't have the file: $fn\n";
+require_once 'get_config.php';
 
 #print_r($config);
 

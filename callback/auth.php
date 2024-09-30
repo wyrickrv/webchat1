@@ -6,9 +6,7 @@ and so the connection could not bind. The solution was to edit the file /etc/ope
 */
 
 // Determine the environment dynamically
-$environment = strpos($_SERVER['REQUEST_URI'], 'chatdev') !== false ? 'dev' : '';
-$config_file = '/etc/apps/chat' . $environment . '_config.ini';
-$config = parse_ini_file($config_file,true);
+require_once '../get_config.php';
 
 
 function authorize($user)

@@ -9,14 +9,14 @@ if (empty($user)) {
     die("User not authenticated");
 }
 
-$deployment = (empty($_SESSION['deployment'])) ? 'azure-gpt4' : $_SESSION['deployment'];
+$deployment = $config['azure']['default'];
 $document_name = $_SESSION['document_name'] = '';
 $document_text = $_SESSION['document_text'] = '';
 
 // Check if the request method is POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Create a new chat in the database using the authenticated user's username as the chat's creator
-    $newChatId = create_chat($user, 'GPT Chat', '', $deployment, $document_name, $document_text);
+    $newChatId = create_chat($user, 'Chat', '', $deployment, $document_name, $document_text);
     
     // Return the ID of the new chat as a JSON object to the client
     echo json_encode(['chat_id' => $newChatId]);

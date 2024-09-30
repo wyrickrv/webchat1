@@ -1,34 +1,21 @@
-
 var chatContainer;
 
-function resetSessionTimer(remainingTime = sessionTimeout) {
-    clearTimeout(sessionTimer);
-    sessionTimer = setTimeout(logoutUser, remainingTime);
-}
+// Copy code to clipboard function
+function copyToClipboard(button) {
+    var code = button.parentNode.querySelector('pre code').textContent;
+    navigator.clipboard.writeText(code).then(() => {
+        var popup = document.createElement('span');
+        popup.className = 'copied-popup show';
+        popup.textContent = 'Copied!';
+        button.parentNode.appendChild(popup);
 
-function checkSessionStatus() {
-    $.ajax({
-        url: 'session_status.php',
-        type: 'GET',
-        dataType: 'json',
-        success: function(response) {
-            if (!response.session_active) {
-                logoutUser();
-            } else {
-                resetSessionTimer(response.remaining_time * 1000); // Adjust timer based on server's response
-            }
-        },
-        error: function() {
-            console.error('Failed to check session status.');
-        }
+        setTimeout(() => {
+            popup.remove();
+        }, 2000);
     });
 }
 
-function logoutUser() {
-    alert("Your session has expired. Please log in again.");
-    window.location.href = "index.php";
-}
-
+// Show 'About Us' modal
 function showAboutUs() {
     var aboutWindow = document.querySelector('.aboutChatWindow');
     var aboutCloser = document.querySelector('.closeAbout');
@@ -36,6 +23,7 @@ function showAboutUs() {
     aboutCloser.focus();  // Give focus to the close button
 }
 
+// Close 'About Us' modal
 function closeAboutUs() {
     var aboutWindow = document.querySelector('.aboutChatWindow');
     aboutWindow.classList.remove('show');  // Remove the 'show' class to hide it
@@ -46,29 +34,32 @@ function closeAboutUs() {
 
 // Modify the event listener for DOMContentLoaded
 document.addEventListener('DOMContentLoaded', (event) => {
-    console.log("DOMContentLoaded - Current chat ID: ", chatId);
+    //console.log("DOMContentLoaded - Current chat ID: ", chatId);
     var savedMessage = localStorage.getItem('chatDraft_' + chatId);
     if (savedMessage) {
         document.getElementById('userMessage').value = savedMessage;
-        console.log("Loaded saved message for chat ID " + chatId + ": ", savedMessage);
+        //console.log("Loaded saved message for chat ID " + chatId + ": ", savedMessage);
     } else {
         document.getElementById('userMessage').value = "";
-        console.log("No saved message found for chat ID " + chatId);
+        //console.log("No saved message found for chat ID " + chatId);
     }
 });
 
 // Modify the event listener for the userMessage input
 document.getElementById('userMessage').addEventListener('input', (event) => {
-    console.log("Input event for chat ID " + chatId);
+    //console.log("Input event for chat ID " + chatId);
     localStorage.setItem('chatDraft_' + chatId, event.target.value);
-    console.log("Saved draft message for chat ID " + chatId + ": ", event.target.value);
+    //console.log("Saved draft message for chat ID " + chatId + ": ", event.target.value);
 });
 
 function sanitizeString(str) {
-    var div = document.createElement('div');
-    div.appendChild(document.createTextNode(str));
-    return div.innerHTML;
+    return str.replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&#039;');
 }
+
 
 function startNewChat() {
     $.ajax({
@@ -76,8 +67,6 @@ function startNewChat() {
         url: "new_chat.php",
         dataType: 'json',
         success: function(response) {
-            // Reset the session timer on every successful AJAX call
-            resetSessionTimer();
 
             // The response should contain the new chat's ID
             var newChatId = response.chat_id;
@@ -89,16 +78,17 @@ function startNewChat() {
 }
 
 function replaceNonAsciiCharacters(str) {
-    // Replace certain non-ASCII characters with their ASCII equivalents
-    str = str.replace(/[\u2018\u2019]/g, "'"); // Replace curly single quotes
-    str = str.replace(/[\u201C\u201D]/g, '"'); // Replace curly double quotes
-    str = str.replace(/\u2026/g, '...');      // Replace ellipsis
-    // Add more replacements as needed
-    
-    // Remove any remaining non-ASCII characters
-    //str = str.replace(/[^\x00-\x7F]/g, "");
-    
+    str = str.replace(/[\u2018\u2019]/g, "'"); 
+    str = str.replace(/[\u201C\u201D]/g, '"');
+    str = str.replace(/\u2026/g, '...');
     return str;
+}
+
+function base64DecodeUnicode(str) {
+    // Decode base64, then URI decode to handle Unicode characters
+    return decodeURIComponent(Array.prototype.map.call(atob(str), function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
 }
 
 function base64EncodeUnicode(str) {
@@ -108,7 +98,6 @@ function base64EncodeUnicode(str) {
         return String.fromCharCode('0x' + p1);
     }));
 }
-
 
 function scrollToBottom() {
     const messageList = document.getElementById('messageList');
@@ -133,8 +122,6 @@ function deleteChat(chatId) {
                 chat_id: chatId
             },
             success: function() {
-                // Reset the session timer on every successful AJAX call
-                resetSessionTimer();
 
                 // Extract the base URL and current chat ID from the current URL
                 var baseUrl = window.location.origin + window.location.pathname;
@@ -185,8 +172,6 @@ function submitEdit(chatId) {
             title: newTitle
         },
         success: function() {
-            // Reset the session timer on every successful AJAX call
-            resetSessionTimer();
 
             // Reload the page to refresh the list of chats
             location.reload();
@@ -194,14 +179,14 @@ function submitEdit(chatId) {
     });
 }
 
-$(document).ready(function(){
-    var chatContainer = $(".chat-container");
+$(document).ready(function() {
+    chatContainer = $(".chat-container");
     var userMessage = $("#userMessage");
 
     // Set focus on the message input
     userMessage.focus();
 
-    console.log(chatId);
+    //console.log(chatId);
 
     // Initially load messages
     loadMessages();
@@ -214,7 +199,7 @@ $(document).ready(function(){
         }
     });
 
-    // Event delegation
+    // Event delegation for chat-item mouseover/out and other buttons
     $(document).on('mouseover', '.chat-item', function () {
         showIcons(this);
     });
@@ -233,39 +218,6 @@ $(document).ready(function(){
         deleteChat(chatId);
     });
 
-    function loadMessages() {
-        $.ajax({
-            url: "get_messages.php",
-            data: { chat_id: chatId, user: user },
-            dataType: 'json',
-            success: function(chatMessages) {
-                resetSessionTimer(); // Reset the session timer on every successful AJAX call
-                displayMessages(chatMessages);
-                scrollToBottom(); // Scroll to bottom after displaying messages
-            }
-        });
-    }
-
-    function displayMessages(chatMessages) {
-        chatMessages.forEach(function (message) {
-            console.log(deployments)
-            console.log(message)
-            var sanitizedPrompt = sanitizeString(message.prompt).replace(/\n/g, '<br>');
-            var sanitizedReply = sanitizeString(message.reply).replace(/\n/g, '<br>');
-
-            var userMessageElement = $('<div class="message user-message"></div>').html(sanitizedPrompt);
-            userMessageElement.prepend('<img src="images/user.png" class="user-icon">');
-            chatContainer.append(userMessageElement);
-
-            if (deployments[message.deployment]) {
-                var imgSrc = 'images/' + deployments[message.deployment].image;
-                var imgAlt = deployments[message.deployment].image_alt;
-                var assistantMessageElement = $('<div class="message assistant-message"></div>').html(sanitizedReply);
-                assistantMessageElement.prepend('<img src="' + imgSrc + '" alt="' + imgAlt + '" class="openai-icon">');
-                chatContainer.append(assistantMessageElement);
-            }
-        });
-    }
     $(document).on('click', '.edit-confirm-icon', function () {
         var chatId = $(this).prev().attr('id').split('-')[2];
         submitEdit(chatId);
@@ -274,7 +226,7 @@ $(document).ready(function(){
     // Event listener for form submission
     $('#messageForm').submit(function(e) {
         e.preventDefault();
-        console.log("Form submission for chat ID " + chatId);
+        //console.log("Form submission for chat ID " + chatId);
 
         var rawMessageContent = userMessage.val().trim();
         var sanitizedMessageContent = replaceNonAsciiCharacters(rawMessageContent);
@@ -291,17 +243,16 @@ $(document).ready(function(){
         // Clear the textarea and localStorage right after form submission
         userMessage.val("");
         localStorage.removeItem('chatDraft_' + chatId);
-        console.log("Form submitted and message cleared for chat ID " + chatId);
+        //console.log("Form submitted and message cleared for chat ID " + chatId);
 
         if (messageContent !== "") {
-            //userMessage.val("");
             $.ajax({
                 type: "POST",
                 url: "ajax_handler.php",
                 data: {
                     message: messageContent,
-                    chat_id: chatId, // Assuming chatId is defined and holds the correct value
-                    user: user // Assuming user is defined and holds the correct value
+                    chat_id: chatId,
+                    user: user
                 },
 
                 beforeSend: function() {
@@ -310,55 +261,47 @@ $(document).ready(function(){
                 error: function() {
                     $('.waiting-indicator').hide();
                 },
-                success: function (response) {
-                    // Hide the waiting indicator
-                    $('.waiting-indicator').hide();
 
-                    console.log("This is the response - ");
-                    //console.log(response);
+                success: function(response) {
+                    $('.waiting-indicator').hide();
 
                     var jsonResponse = JSON.parse(response);
                     var gpt_response = jsonResponse['gpt_response'];
+
+                    // Store the raw response
+                    var raw_gpt_response = gpt_response;
+                    //console.log("testing")
+                    //console.log(raw_gpt_response)
+                    //console.log("happy")
+
                     var deployment = jsonResponse['deployment'];
                     var error = jsonResponse['error'];
-                    //console.log(error)
-                    console.log(deployment)
-                    //console.log(gpt_response)
 
-
-                    // Check if gpt_response is a JSON string, and if so, parse it
-                    if (error == true) {
+                    // Handle errors in the response
+                    if (error) {
                         console.log("FOUND AN ERROR IN THE RESPONSE");
                         alert('Error: ' + gpt_response);
                         return;
                     }
-                    
-                    if(gpt_response === null ||gpt_response === undefined ) {
-                        gpt_response = "The message could not be processed.";
-                    } 
 
-                    if (gpt_response.startsWith('```') && gpt_response.endsWith('```')) {
-                        gpt_response = gpt_response.slice(3, -3); // remove ```
-                        var highlightedCode = hljs.highlightAuto(gpt_response);
-                        gpt_response = '<pre><code>' + highlightedCode.value + '</code></pre>';
-                    } else {
-                        gpt_response = gpt_response.replace(/\n/g, '<br>');
+                    // Check if gpt_response is null or undefined
+                    if (!gpt_response) {
+                        gpt_response = "The message could not be processed.";
                     }
+
+                    // Process code blocks in gpt_response
+                    gpt_response = formatCodeBlocks(gpt_response);
 
                     if (jsonResponse.new_chat_id) {
                         window.location.href = "/" + application_path + "/" + jsonResponse.new_chat_id;
                     }
 
-                    var userMessageDecoded = atob(messageContent);
-                    //console.log("this is the user message ")
-                    //console.log(userMessageDecoded)
+                    var userMessageDecoded = base64DecodeUnicode(messageContent);
                     var sanitizedPrompt = sanitizeString(userMessageDecoded).replace(/\n/g, '<br>');
-                    //console.log("this is the NOW SANITIZED user message ")
-                    //console.log(sanitizedPrompt) 
 
                     // Display the user message (prompt)
                     var userMessageElement = $('<div class="message user-message"></div>').html(sanitizedPrompt);
-                    userMessageElement.prepend('<img src="images/user.png" class="user-icon" alt="User icon">'); // Add user icon
+                    userMessageElement.prepend('<img src="images/user.png" class="user-icon" alt="User icon">');
                     chatContainer.append(userMessageElement);
 
                     // Check if the deployment configuration exists
@@ -366,24 +309,180 @@ $(document).ready(function(){
                         var imgSrc = 'images/' + deployments[deployment].image;
                         var imgAlt = deployments[deployment].image_alt;
 
-                        // Display the assistant message (reply)
-                        var assistantMessageElement = $('<div class="message assistant-message"></div>');
+                        // Create the assistant message element
+                        var assistantMessageElement = $('<div class="message assistant-message" style="margin-bottom: 30px;"></div>');
+
+                        // Add the assistant's icon
                         assistantMessageElement.prepend('<img src="' + imgSrc + '" alt="' + imgAlt + '" class="openai-icon">');
-                        //chatContainer.append(assistantMessageElement);
+
+                        assistantMessageElement.append('<span>' + gpt_response + '</span>');
+
+                        // Append the assistant message to the chat container
+                        chatContainer.append(assistantMessageElement);
+
+                        // Add the copy button
+                        addCopyButton(assistantMessageElement, raw_gpt_response);
+
                     }
-
-                    // Create a span element to hold the formatted response
-                    const responseTextNode = $('<span></span>').html(gpt_response);
-                    assistantMessageElement.append(responseTextNode);
-
-                    // Append the assistant message element to the chat container
-                    chatContainer.append(assistantMessageElement);
 
                     // Scroll to the bottom of the chat container
                     chatContainer.scrollTop(chatContainer.prop("scrollHeight"));
+
+                    // Re-run Highlight.js on the newly added content
+                    hljs.highlightAll();
+
                 }
+
             });
         }
     });
+
+
+// Function to add the copy button
+function addCopyButton(messageElement, rawMessageContent) {
+    // Create the copy button without the onclick attribute
+    var copyButton = $(`
+        <button class="copy-chat-button" title="Copy Raw Reply" aria-label="Copy the current reply to clipboard">
+            <span style="font-size:12px;">Copy Raw Reply</span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"></path>
+            </svg>
+        </button>
+    `);
+
+    // Append the copy button to the message element
+    messageElement.append(copyButton);
+
+    // Set the position of the message element to relative
+    messageElement.css('position', 'relative');
+
+    // Initially hide the button
+    copyButton.hide();
+
+    // Show the button on mouse over
+    messageElement.on('mouseover', function() {
+        copyButton.show();
+    });
+
+    // Hide the button on mouse out
+    messageElement.on('mouseout', function() {
+        copyButton.hide();
+    });
+
+    // Copy the raw content to clipboard on click
+    copyButton.on('click', function() {
+        // Use the rawMessageContent directly
+        navigator.clipboard.writeText(rawMessageContent).then(function() {
+            // Create a subtle popup message
+            var popup = $('<span class="copied-chat-popup show">Copied!</span>');
+            
+            // Style the popup (adjust positioning as needed)
+            popup.css({
+                position: 'absolute',
+                top: copyButton.position().top + 4, // Adjust this value as needed
+                left: copyButton.position().left + 150,
+            });
+
+            // Append the popup to the message element
+            messageElement.append(popup);
+
+            // Remove the popup after 2 seconds
+            setTimeout(function() {
+                popup.remove();
+            }, 2000);
+        }, function(err) {
+            console.error('Could not copy text: ', err);
+        });
+    });
+}
+
+
+    function loadMessages() {
+        $.ajax({
+            url: "get_messages.php",
+            data: { chat_id: chatId, user: user },
+            dataType: 'json',
+            success: function(chatMessages) {
+                displayMessages(chatMessages);
+                scrollToBottom();
+            }
+        });
+    }
+
+    function displayMessages(chatMessages) {
+        chatMessages.forEach(function(message) {
+            var sanitizedPrompt = sanitizeString(message.prompt).replace(/\n/g, '<br>');
+
+            // Format the reply to include code blocks
+            var sanitizedReply = formatCodeBlocks(message.reply);
+
+            var userMessageElement = $('<div class="message user-message"></div>').html(sanitizedPrompt);
+            userMessageElement.prepend('<img src="images/user.png" class="user-icon">');
+            chatContainer.append(userMessageElement);
+
+            if (deployments[message.deployment]) {
+                var imgSrc = 'images/' + deployments[message.deployment].image;
+                var imgAlt = deployments[message.deployment].image_alt;
+
+
+                var assistantMessageElement = $('<div class="message assistant-message"></div>').html(sanitizedReply);
+
+                // Add the assistant's icon
+                assistantMessageElement.prepend('<img src="' + imgSrc + '" alt="' + imgAlt + '" class="openai-icon">');
+
+                // Append the assistant message to the chat container
+                chatContainer.append(assistantMessageElement);
+
+                // Add the copy button
+                addCopyButton(assistantMessageElement, message.reply);
+            }
+
+            // Re-run Highlight.js on new content
+            hljs.highlightAll();
+        });
+    }
+
+// Function to identify and format code blocks
+function formatCodeBlocks(reply) {
+    // Array to hold code blocks temporarily
+    let codeBlocks = [];
+
+    // Extract and replace code blocks with placeholders
+    reply = reply.replace(/```(\w*)\n([\s\S]*?)```/g, function(match, lang, code) {
+        // If language is specified, use it; otherwise default to plaintext
+        var languageClass = lang ? `language-${lang}` : 'plaintext';
+
+        // Escape the code content before inserting it
+        const sanitizedCode = sanitizeString(code);
+
+        // Save the code block in an array
+        codeBlocks.push(`
+            <div class="code-block">
+                <div class="language-label">${lang || 'code'}</div>
+                <button class="copy-button" title="Copy Code" aria-label="Copy code to clipboard" onclick="copyToClipboard(this)">
+                    <span style="font-size:12px;">Copy Code</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                        <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"></path>
+                    </svg>
+                </button>
+                <pre><code class="${languageClass}">${sanitizedCode}</code></pre>
+            </div>`);
+
+        // Return a placeholder to be replaced later
+        return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
+    });
+
+    // Use marked.parse to handle markdown parsing on the rest of the content
+    reply = marked.parse(reply);
+
+    // Replace placeholders with the original code block HTML
+    codeBlocks.forEach((block, index) => {
+        reply = reply.replace(`<strong>CODE_BLOCK_${index}</strong>`, block);
+    });
+
+    return reply;
+}
+
+
 });
 

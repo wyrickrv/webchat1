@@ -1,6 +1,12 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
+h3, h4 {
+    font-size: 1.25rem;
+}
+code {
+    color: #993366;
+}
 .p-2 {
     width: 100%;
 }
@@ -32,7 +38,8 @@ body {
 
 .message {
     margin: 0px 0 0px 0;
-    padding: 10px;
+    padding: 20px;
+    padding-bottom: 30px;
     /*border-radius: 10px;*/
 }
 .assistant-message {
@@ -42,6 +49,17 @@ body {
 .user-message {
     background-color: #fbfbfb;
 }
+
+.message.assistant-message {
+    position: relative;
+    /* other styles */
+}
+
+.message.assistant-message:hover {
+    display: block;
+}
+
+
 #username {
     margin-right: 10px; /* add some space to the right */
     white-space: nowrap;
@@ -68,6 +86,215 @@ body {
     text-align: right;
     margin: 15px 0px;
 }
+
+
+
+
+
+
+
+
+
+
+
+/* Main container */
+.row.flex-grow-1 {
+    display: flex; /* Use flexbox to control the layout */
+    flex-wrap: nowrap; /* Prevent wrapping of elements */
+}
+
+/* Sidebar navigation */
+.menu {
+    background-color: #343a40;
+    color: white;
+    width: 310px; /* Fixed width */
+    flex: 0 0 310px; /* Prevent the menu from growing or shrinking */
+    overflow: hidden;
+    font-size: 85%;
+}
+
+/* Main content */
+.main-content {
+    flex: 1; /* Allows the main content to grow and shrink */
+    display: flex;
+    flex-direction: column; /* Stack elements vertically */
+    min-width: 0; /* Prevent overflow */
+}
+
+/* Adjust the textarea to leave space for the submit button */
+#userMessage {
+    width: 100%;
+    padding-right: 40px; /* Add padding to avoid overlap with the button */
+    resize: none; /* Optional: prevent resizing */
+}
+
+/* Style for the submit button */
+.submit-button {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    outline: none;
+    color: #007bff; /* Button color */
+}
+
+/* Media query for mobile/tablet screens */
+@media (max-width: 767.98px) {
+    /* Adjust layout for mobile view */
+    .row.flex-grow-1 {
+        flex-direction: column; /* Stack elements vertically */
+    }
+    
+    /* Adjust the sidebar */
+    .menu {
+        width: 100%;
+        flex: none; /* Remove fixed sizing */
+    }
+
+    /* Adjust the main content */
+    .main-content {
+        width: 100%;
+        min-width: auto;
+    }
+
+    /* Adjust height for smaller screens */
+    .maincol-top {
+        height: calc(100vh - 360px); /* Adjust height as needed */
+    }
+}
+
+
+    /* Styling for code blocks */
+    .code-block {
+        position: relative;
+        background-color: #282c34; /* Dark background */
+        color: #abb2bf; /* Light text */
+        padding: 36px 4px 4px 4px;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 20px auto 0px auto;
+        width: 80%; /* Adjust the width to 80% of the chat container */
+    }
+
+    .code-block .language-label {
+        position: absolute;
+        top: 8px;
+        left: 16px;
+        background-color: rgba(255, 255, 255, 0.1);
+        color: #e5c07b;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+        text-transform: uppercase;
+    }
+    /* Copy Button Styling */
+    .copy-button, .scopy-chat-button {
+        position: absolute;
+        top: 2px;
+        right: 12px;
+        background: none;
+        border: none;
+        color: #e5c07b;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+    }
+    .copy-button:hover, .copy-chat-button:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    .copy-button:focus, .copy-chat-button:focus {
+        outline: none;
+    }
+    .copy-button svg, .copy-chat-button svg {
+        width: 16px;
+        height: 16px;
+        fill: currentColor;
+    }
+
+
+.copied-chat-popup {
+    position: absolute;
+    background-color: #56b364;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    z-index: 1000;
+    pointer-events: none; /* Allows clicks to pass through */
+}
+
+.copied-chat-popup.show {
+    opacity: 1;
+}
+
+
+.copy-chat-button {
+        position: absolute;
+        background: none;
+        border: none;
+        color: #a5803b;
+        cursor: pointer;
+        padding: 6px;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+    bottom: 4px;
+    left: 4px;
+    display: none;
+    font-size: 16px;
+}
+
+.copy-chat-button:hover {
+    color: #FFFFDD;
+    background-color: #0056b3;
+}
+
+
+
+
+
+
+
+
+
+
+    /* Copied Popup Styling */
+    .copied-popup {
+        position: absolute;
+        top: 40px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #56b364;
+        color: #fff;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s, visibility 0.3s;
+        pointer-events: none;
+        z-index: 10;
+    }
+    /* Show the popup when active */
+    .copied-popup.show {
+        opacity: 1;
+        visibility: visible;
+    }
+    /* Adjust the pre and code tags */
+    .code-block pre {
+        margin: 0;
+    }
+
+
+
+
+
+
 .navbar {
     display: none; /* Hide by default */
 }
@@ -79,13 +306,9 @@ body {
     overflow: hidden;
     background-color: #343a40;
     color: white;
-    font-size: 0.8vw;
+    /*font-size: 0.8vw;*/
 
     /*padding: 15px;*/
-    /*
-    width: 275px !important;
-    flex: none !important; /* This prevents the column from growing or shrinking */
-    */
 }
 
 .menu a {
@@ -112,6 +335,29 @@ body {
     width: 99%;
     margin: 5px auto;
 }
+
+/* Container for the textarea and submit button */
+.input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+
+/* Icon within the submit button */
+.send-icon {
+    width: 24px;
+    height: 24px;
+    fill: currentColor; /* Inherit color from the button */
+}
+
+/* Hide the button outline on focus */
+.submit-button:focus {
+    outline: none;
+}
+
+
+
 .waiting-indicator {
     position: fixed;
     top: 50%;
@@ -309,7 +555,7 @@ display: none !Important;
 }
 /* Adjust chat content to fill page */
 .main-content {
-width: 100%;
+width: 98%;
 margin: 0;
 padding: 0;
 }
