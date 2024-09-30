@@ -21,7 +21,7 @@ foreach(array_keys($models) as $m) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $config['app']['app_title']; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="style.v1.03.css" rel="stylesheet">
+    <link href="style.v1.03.1.css" rel="stylesheet">
     <!-- Highlight.js CSS -->
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
 
@@ -260,7 +260,7 @@ foreach(array_keys($models) as $m) {
     <!-- Include Session Handler JS -->
     <script src="session_handler.js"></script>
 
-<script src="script.v1.03.js"></script>
+<script src="script.v1.03.1.js"></script>
 <script>
     function printChat() {
         window.print();
