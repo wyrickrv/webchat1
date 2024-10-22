@@ -111,6 +111,17 @@ function verify_user_chat($user, $chat_id) {
     return $output;
 }
 
+// 
+function get_new_title_status($user, $chat_id) {
+    global $pdo;
+    if (empty($chat_id)) return false;
+    
+    $stmt = $pdo->prepare("SELECT new_title FROM chat WHERE user = :user AND id = :chat_id");
+    $stmt->execute(['chat_id' => $chat_id, 'user' => $user]);
+    $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return $result[0]['new_title'];
+}
+
 // Update the deployment in the database
 function update_deployment($user, $chat_id, $deployment) {
     global $pdo;
@@ -122,6 +133,19 @@ function update_deployment($user, $chat_id, $deployment) {
     // prepare a sql statement to update the deployment of a chat where the id matches the $chat_id
     $stmt = $pdo->prepare("update chat set deployment = :deployment where id = :id");
     $stmt->execute(['deployment' => $deployment, 'id' => $chat_id]);
+}
+
+// Update the chat title in the database
+function update_chat_title($user, $chat_id, $updated_title) {
+    global $pdo;
+
+    if (!verify_user_chat($user, $chat_id)) {
+        die("Unauthorized access.");
+    }
+
+    // Prepare a SQL statement to update the title
+    $stmt = $pdo->prepare("UPDATE chat SET title = :title, new_title = :new_title WHERE id = :id");
+    $stmt->execute(['title' => $updated_title, 'new_title' => '0', 'id' => $chat_id]);
 }
 
 // Update the temperature in the chat table

@@ -240,10 +240,22 @@ $(document).ready(function() {
 
         var messageContent = base64EncodeUnicode(sanitizedMessageContent); // Encode in Base64 UTF-8
 
-        // Clear the textarea and localStorage right after form submission
-        userMessage.val("");
-        localStorage.removeItem('chatDraft_' + chatId);
-        //console.log("Form submitted and message cleared for chat ID " + chatId);
+        // Display the user message (prompt) immediately after submission
+        if (sanitizedMessageContent !== "") {
+            var userMessageDecoded = base64DecodeUnicode(messageContent);
+            var sanitizedPrompt = sanitizeString(userMessageDecoded).replace(/\n/g, '<br>');
+
+            var userMessageElement = $('<div class="message user-message"></div>').html(sanitizedPrompt);
+            userMessageElement.prepend('<img src="images/user.png" class="user-icon" alt="User icon">');
+            chatContainer.append(userMessageElement);
+
+            // Scroll to the bottom of the chat container
+            chatContainer.scrollTop(chatContainer.prop("scrollHeight"));
+
+            // Clear the textarea and localStorage right after form submission
+            userMessage.val("");
+            localStorage.removeItem('chatDraft_' + chatId);
+        }
 
         if (messageContent !== "") {
             $.ajax({
@@ -270,9 +282,6 @@ $(document).ready(function() {
 
                     // Store the raw response
                     var raw_gpt_response = gpt_response;
-                    //console.log("testing")
-                    //console.log(raw_gpt_response)
-                    //console.log("happy")
 
                     var deployment = jsonResponse['deployment'];
                     var error = jsonResponse['error'];
@@ -296,14 +305,6 @@ $(document).ready(function() {
                         window.location.href = "/" + application_path + "/" + jsonResponse.new_chat_id;
                     }
 
-                    var userMessageDecoded = base64DecodeUnicode(messageContent);
-                    var sanitizedPrompt = sanitizeString(userMessageDecoded).replace(/\n/g, '<br>');
-
-                    // Display the user message (prompt)
-                    var userMessageElement = $('<div class="message user-message"></div>').html(sanitizedPrompt);
-                    userMessageElement.prepend('<img src="images/user.png" class="user-icon" alt="User icon">');
-                    chatContainer.append(userMessageElement);
-
                     // Check if the deployment configuration exists
                     if (deployments[deployment]) {
                         var imgSrc = 'images/' + deployments[deployment].image;
@@ -322,7 +323,6 @@ $(document).ready(function() {
 
                         // Add the copy button
                         addCopyButton(assistantMessageElement, raw_gpt_response);
-
                     }
 
                     // Scroll to the bottom of the chat container
@@ -332,7 +332,6 @@ $(document).ready(function() {
                     hljs.highlightAll();
 
                 }
-
             });
         }
     });

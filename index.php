@@ -99,7 +99,7 @@ foreach(array_keys($models) as $m) {
                     }
                     echo '<div class="chat-item '.$class.'" id="chat-' . htmlspecialchars($chat['id']) . '">';
 
-                    echo '<a class="chat-link chat-title" title="Load chat into context window" href="/'.$application_path.'/' . htmlspecialchars($chat['id']) . '">' . htmlspecialchars($chat['title']) . '</a>';
+                    echo '<a class="chat-link chat-title" title="'.htmlspecialchars($chat['title']).'" href="/'.$application_path.'/' . htmlspecialchars($chat['id']) . '">' . htmlspecialchars($chat['title']) . '</a>';
                     echo '<img class="chat-icon edit-icon" src="images/chat_edit.png" alt="Edit this chat" title="Edit this chat">';
                     echo '<img class="chat-icon delete-icon" src="images/chat_delete.png" alt="Delete this chat" title="Delete this chat">';
                     echo '</div>';
@@ -159,25 +159,18 @@ foreach(array_keys($models) as $m) {
 
             <div class="maincolumn maincol-bottom"><!-- Chat body bottom -->
 
-<!--
-<form id="messageForm">
-    <textarea class="form-control" id="userMessage" aria-label="Main chat textarea" placeholder="Type your message..." rows="4" required></textarea><br>
-    <button type="submit" class="btn btn-primary mt-2">Submit</button>
-</form>
--->
-
-
-<form id="messageForm" class="chat-input-form">
-    <div class="input-container">
-        <textarea class="form-control" id="userMessage" aria-label="Main chat textarea" placeholder="Type your message..." rows="4" required></textarea>
-        <button type="submit" class="submit-button" aria-label="Send message">
-            <!-- Icon (paper plane) -->
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="send-icon">
-                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-            </svg>
-        </button>
-    </div>
-</form>
+                <!-- Original messageForm -->
+                <form id="messageForm" class="chat-input-form">
+                    <div class="input-container">
+                        <textarea class="form-control" id="userMessage" aria-label="Main chat textarea" placeholder="Type your message..." rows="4" required></textarea>
+                        <button type="submit" class="submit-button" aria-label="Send message">
+                            <!-- Icon (paper plane) -->
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="send-icon">
+                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
 
 
                 <form onsubmit="saveMessage()" id="model_select" action="" method="post" style="display: inline-block; margin-left: 20px; margin-right: 10px; margin-top: 15px; border-top: 1px solid white; ">
@@ -204,10 +197,6 @@ foreach(array_keys($models) as $m) {
                         ?>
                     </select>
                 </form>
-<?php
-#if ($config[$deployment]['host'] == 'Azure')
-#{
-?>
                 <form onSubmit="saveMessage();" method="post" action="upload.php" id="document-uploader" enctype="multipart/form-data" style="display: inline-block; margin-top: 15px; margin-left: 30px;">
                     <!-- Hidden input for chat_id -->
                     <input type="hidden" name="chat_id" aria-label="Hidden field with Chat ID" value="<?php echo htmlspecialchars($_GET['chat_id']); ?>">
@@ -220,9 +209,6 @@ foreach(array_keys($models) as $m) {
                         <input title="Document types accepted include PDF, XML, JSON, Word, PowerPoint, Text, and Markdown. At this time we do not support Excel or CSV files." type="file" name="uploadDocument" aria-label="File upload button" accept=".pdf,.docx,.pptx,.txt,.md,.json,.xml" style="width:15em;" required onchange="this.form.submit()" />
                     <?php endif; ?>
                 </form>
-<?php
-#}
-?>
 <?php 
                     if(!empty($_SESSION['error'])) {
                         echo "<script>alert('Error: ".$_SESSION['error']."');</script>";
