@@ -162,7 +162,7 @@ function update_temperature($user, $chat_id, $temperature) {
 }
 
 // Update the document in the database
-function update_chat_document($user, $chat_id, $document_name, $document_text) {
+function update_chat_document($user, $chat_id, $document_name, $document_type, $document_text) {
     global $pdo;
 
     if (!verify_user_chat($user, $chat_id)) {
@@ -170,8 +170,8 @@ function update_chat_document($user, $chat_id, $document_name, $document_text) {
     }
     
     // prepare a sql statement to update the deployment of a chat where the id matches the $chat_id
-    $stmt = $pdo->prepare("update chat set document_name = :document_name, document_text = :document_text where id = :id");
-    $stmt->execute(['document_name' => $document_name, 'document_text' => $document_text, 'id' => $chat_id]);
+    $stmt = $pdo->prepare("update chat set document_name = :document_name, document_type = :document_type, document_text = :document_text where id = :id");
+    $stmt->execute(['document_name' => $document_name, 'document_type' => $document_type, 'document_text' => $document_text, 'id' => $chat_id]);
 }
 
 

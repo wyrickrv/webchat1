@@ -197,18 +197,30 @@ foreach(array_keys($models) as $m) {
                         ?>
                     </select>
                 </form>
+
+                <!-- File Upload Form -->
                 <form onSubmit="saveMessage();" method="post" action="upload.php" id="document-uploader" enctype="multipart/form-data" style="display: inline-block; margin-top: 15px; margin-left: 30px;">
                     <!-- Hidden input for chat_id -->
                     <input type="hidden" name="chat_id" aria-label="Hidden field with Chat ID" value="<?php echo htmlspecialchars($_GET['chat_id']); ?>">
 
-                    <?php if (!empty($_SESSION['document_name'])): ?>
-                        <p>Uploaded file: <span style="color: salmon;"><?php echo htmlspecialchars($_SESSION['document_name']); ?></span>
-                            <a href="upload.php?remove=1&chat_id=<?php echo htmlspecialchars($_GET['chat_id']); ?>" style="color: blue">Remove</a>
-                        </p>
-                    <?php else: ?>
-                        <input title="Document types accepted include PDF, XML, JSON, Word, PowerPoint, Text, and Markdown. At this time we do not support Excel or CSV files." type="file" name="uploadDocument" aria-label="File upload button" accept=".pdf,.docx,.pptx,.txt,.md,.json,.xml" style="width:15em;" required onchange="this.form.submit()" />
+                <?php if (!empty($_SESSION['document_name'])): ?>
+                    <p style="white-space: nowrap;">Uploaded file: <span style="white-space: nowrap;color: salmon;"><?php echo htmlspecialchars($_SESSION['document_name']); ?></span>
+                        <a href="upload.php?remove=1&chat_id=<?php echo htmlspecialchars($_GET['chat_id']); ?>" style="color: blue">Remove</a>
+                    <?php if (!empty($_SESSION['document_type']) && strpos($_SESSION['document_type'], 'image/') === 0): ?>
+                        <!-- Display thumbnail for image -->
+                        <img src="<?php echo $_SESSION['document_text']; ?>" alt="Uploaded Image Thumbnail" style="max-width: 60px; max-height: 60px;margin-top: -10px;" />
                     <?php endif; ?>
+                    </p>
+
+                <?php else: ?>
+                    <input title="Document types accepted include PDF, XML, JSON, Word, PowerPoint, Text, Markdown, and Image files (PNG, JPEG)." 
+                           type="file" name="uploadDocument" aria-label="File upload button" 
+                           accept=".pdf,.docx,.pptx,.txt,.md,.json,.xml,.png,.jpg,.jpeg,.gif" 
+                           style="width:15em;" required onchange="this.form.submit()" />
+                <?php endif; ?>
+
                 </form>
+
 <?php 
                     if(!empty($_SESSION['error'])) {
                         echo "<script>alert('Error: ".$_SESSION['error']."');</script>";
