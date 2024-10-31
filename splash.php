@@ -6,7 +6,7 @@ $error = '';
 #file_put_contents("mylog.log", "\$_SESSION in Splash.php BEFORE changes = ".print_r($_SESSION,1)."\n\n\n", FILE_APPEND);
 
 if (!empty($_SESSION['user_data']['userid']) && (empty($_SESSION['authorized']) || $_SESSION['authorized'] !== true)){
-    $error = '<br>The user ' . $_SESSION['user_data']['userid'] . " is not athorized to use this tool<br>\n";
+    $error = '<br>The user ' . $_SESSION['user_data']['userid'] . " is not authorized to use this tool<br>\n";
     $_SESSION['splash'] = false;
 }
 

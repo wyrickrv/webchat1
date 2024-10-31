@@ -1,4 +1,5 @@
 <?php
+
 #die("<h2>NHLBI Chat is down for a very brief maintenance.</h2>");
 // Include the library functions and the database connection
 require_once 'lib.required.php'; 
@@ -12,6 +13,12 @@ $emailhelp = $config['app']['emailhelp'];
 $deployments_json = array();
 foreach(array_keys($models) as $m) {
     $deployments_json[$m] = $config[$m];
+}
+
+if (empty($chat_id)) {
+    $_SESSION['document_name'] = '';
+    $_SESSION['document_type'] = '';
+    $_SESSION['document_text'] = '';
 }
 
 ?><!DOCTYPE html>
@@ -48,6 +55,10 @@ foreach(array_keys($models) as $m) {
         var temperature = "<?php echo $_SESSION['temperature']; ?>";
         var chatContainer;
 
+        // Pass document data from PHP session to JavaScript
+        var document_name = <?php echo json_encode($_SESSION['document_name']); ?>;
+        var document_type = <?php echo json_encode($_SESSION['document_type']); ?>;
+        var document_text = <?php echo json_encode($_SESSION['document_text']); ?>;
 
     </script>
 

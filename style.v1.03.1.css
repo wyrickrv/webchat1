@@ -362,7 +362,11 @@ code {
     outline: none;
 }
 
-
+.image-message img{
+    margin: 0px auto;
+    max-width: 600px;
+    max-height: 500px;
+}
 
 .waiting-indicator {
     position: fixed;
@@ -378,12 +382,16 @@ code {
     height: 30px;
     margin: 0px 6px;
     margin-right: 9px;
+    margin-top: -5px;
+    float: left;
 }
 .user-icon {
     width: 40px;
     height: 40px;
     margin: 0px;
     margin-right: 6px;
+    margin-top: -5px;
+    float: left;
 }
 .newchat {
     border: solid gray 1px;

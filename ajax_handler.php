@@ -3,7 +3,8 @@
 require_once 'lib.required.php';
 require_once 'db.php';
 
-define('HARDCODED_DEPLOYMENT','azure-gpt35');
+#define('HARDCODED_DEPLOYMENT','azure-gpt35');
+define('HARDCODED_DEPLOYMENT','azure-gpt3-16k');
 
 // Check if the request method is POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -55,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Update the chat title in the database if the title was successfully generated
         if ($chat_title !== null) {
             update_chat_title($user, $chat_id, $chat_title);
+            create_auto_title($chat_id, $chat_title);
         }
     }
 

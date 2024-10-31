@@ -54,11 +54,73 @@ function create_chat($user, $title, $summary, $deployment, $document_name, $docu
 // Create a new exchange in the database with the given chat ID, prompt, and reply
 function create_exchange($chat_id, $prompt, $reply) {
     global $pdo;
-    $deployment = $_SESSION['deployment'];
-    $temperature= $_SESSION['temperature'];
-    $stmt = $pdo->prepare("INSERT INTO exchange (chat_id, deployment, temperature, prompt, reply, timestamp) VALUES (:chat_id, :deployment, :temperature, :prompt, :reply, NOW())");
-    $stmt->execute(['chat_id' => $chat_id, 'deployment' => $deployment, 'temperature'=>$temperature, 'prompt' => $prompt, 'reply' => $reply]);
+    $deployment = $_SESSION['deployment'] ?? null;
+    $temperature = $_SESSION['temperature'] ?? null;
+    $api_endpoint = $_SESSION['api_endpoint'] ?? null;
+    $uri = $_SERVER['HTTP_REFERER'];
+    
+    // Retrieve document information from the chat table
+    $document_status = get_uploaded_image_status($chat_id);
+    #error_log('Database test: ' . print_r($document_status,1));
+    
+    // Initialize document details
+    $document_name = null;
+    $document_type = null;
+    $document_text = null;
+
+    // Check if the document is an image
+    if (is_array($document_status) && isset($document_status['document_type'])) {
+        $mime_type = $document_status['document_type'];
+        $allowed_mime_types = ['image/jpeg', 'image/png', 'image/gif', 'image/bmp', 'image/tiff'];
+
+        if (in_array($mime_type, $allowed_mime_types)) {
+            $document_name = $document_status['document_name'] ?? null;
+            $document_type = $document_status['document_type'] ?? null;
+            $document_text = $document_status['document_text'] ?? null;
+        }
+    }
+
+    // Prepare the INSERT statement with placeholders for document details
+    $stmt = $pdo->prepare("
+        INSERT INTO exchange (chat_id, deployment, api_endpoint, temperature, uri, prompt, reply, document_name, document_type, document_text, timestamp)
+        VALUES (:chat_id, :deployment, :api_endpoint, :temperature, :uri, :prompt, :reply, :document_name, :document_type, :document_text, NOW())
+    ");
+    
+    // Bind the parameters
+    $stmt->execute([
+        'chat_id' => $chat_id,
+        'deployment' => $deployment,
+        'api_endpoint' => $api_endpoint,
+        'temperature' => $temperature,
+        'uri' => $uri,
+        'prompt' => $prompt,
+        'reply' => $reply,
+        'document_name' => $document_name,
+        'document_type' => $document_type,
+        'document_text' => $document_text
+    ]);
+    
     return $pdo->lastInsertId();
+}
+
+// Create a new exchange in the database with the given chat ID, prompt, and reply
+function create_auto_title($chat_id, $title) {
+    global $pdo;
+    $api_endpoint = $_SESSION['api_endpoint'] ?? null;
+    $uri = $_SERVER['HTTP_REFERER'];
+    $stmt = $pdo->prepare("INSERT INTO auto_title (chat_id, title, uri, api_endpoint, timestamp) VALUES (:chat_id, :title, :uri, :api_endpoint, NOW())");
+    $stmt->execute(['chat_id' => $chat_id, 'title'=>$title, 'uri' => $uri, 'api_endpoint' => $api_endpoint]);
+    return $pdo->lastInsertId();
+}
+
+function get_uploaded_image_status($chat_id) {
+    global $pdo;
+    if (empty($chat_id)) return false;
+    
+    $stmt = $pdo->prepare("SELECT document_name, document_type, document_text FROM chat WHERE id = :chat_id LIMIT 1");
+    $stmt->execute(['chat_id' => $chat_id]);
+    $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    return $result[0];
 }
 
 // Get all exchanges for a given chat ID from the database, ordered by timestamp

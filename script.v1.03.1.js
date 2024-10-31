@@ -249,6 +249,32 @@ $(document).ready(function() {
             userMessageElement.prepend('<img src="images/user.png" class="user-icon" alt="User icon">');
             chatContainer.append(userMessageElement);
 
+            // Display the image only if document_type is an image MIME type
+            if (document_text && document_type) { // Ensure both document_text and document_type are present
+                // Check if document_type starts with 'image/'
+                if (typeof document_type === 'string' && document_type.toLowerCase().startsWith('image/')) {
+                    // Create an image element with the appropriate MIME type
+                    // Assuming document_text contains a Base64-encoded string without the data URL prefix
+                    //var imgSrc = `data:${document_type};base64,${document_text}`;
+                    var imgSrc = document_text;
+
+
+                    var imgElement = $('<img>')
+                        .attr('src', imgSrc)
+                        .attr('alt', 'Uploaded Image')
+                        .on('error', function() {
+                            console.error('Failed to load image.');
+                        });
+
+                    // Optionally, wrap the image in a div with a class for styling
+                    var imageContainer = $('<div class="message image-message"></div>').append(imgElement);
+
+                    // Append the image to the chat container
+                    chatContainer.append(imageContainer);
+                }
+                // If document_type is not an image MIME type, do not display anything
+            }
+
             // Scroll to the bottom of the chat container
             chatContainer.scrollTop(chatContainer.prop("scrollHeight"));
 
@@ -410,38 +436,52 @@ function addCopyButton(messageElement, rawMessageContent) {
         });
     }
 
-    function displayMessages(chatMessages) {
-        chatMessages.forEach(function(message) {
-            var sanitizedPrompt = sanitizeString(message.prompt).replace(/\n/g, '<br>');
 
-            // Format the reply to include code blocks
-            var sanitizedReply = formatCodeBlocks(message.reply);
+function displayMessages(chatMessages) {
+    chatMessages.forEach(function(message) {
+        var sanitizedPrompt = sanitizeString(message.prompt).replace(/\n/g, '<br>');
 
-            var userMessageElement = $('<div class="message user-message"></div>').html(sanitizedPrompt);
-            userMessageElement.prepend('<img src="images/user.png" class="user-icon">');
-            chatContainer.append(userMessageElement);
+        // Format the reply to include code blocks                                                                                                                     
+        var sanitizedReply = formatCodeBlocks(message.reply);
 
-            if (deployments[message.deployment]) {
-                var imgSrc = 'images/' + deployments[message.deployment].image;
-                var imgAlt = deployments[message.deployment].image_alt;
+        var userMessageElement = $('<div class="message user-message"></div>').html(sanitizedPrompt);
+        userMessageElement.prepend('<img src="images/user.png" class="user-icon">');
+        chatContainer.append(userMessageElement);
+
+        // Check if document_name and document_text are not empty
+        if (message.document_name && message.document_text) {
+            // Create an image element with the base64 data
+            var imgElement = $('<img>').attr('src', message.document_text);
+
+            // Optionally, wrap the image in a div with a class for styling
+            var imageContainer = $('<div class="message image-message"></div>').append(imgElement);
+
+            // Append the image to the chat container
+            chatContainer.append(imageContainer);
+        }
+
+        if (deployments[message.deployment]) {
+            var imgSrc = 'images/' + deployments[message.deployment].image;
+            var imgAlt = deployments[message.deployment].image_alt;
+
+            var assistantMessageElement = $('<div class="message assistant-message"></div>').html(sanitizedReply);
+
+            // Add the assistant's icon
+            assistantMessageElement.prepend('<img src="' + imgSrc + '" alt="' + imgAlt + '" class="openai-icon">');
+
+            // Append the assistant message to the chat container
+            chatContainer.append(assistantMessageElement);
+
+            // Add the copy button
+            addCopyButton(assistantMessageElement, message.reply);
+        }
+
+        // Re-run Highlight.js on new content
+        hljs.highlightAll();
+    });
+}
 
 
-                var assistantMessageElement = $('<div class="message assistant-message"></div>').html(sanitizedReply);
-
-                // Add the assistant's icon
-                assistantMessageElement.prepend('<img src="' + imgSrc + '" alt="' + imgAlt + '" class="openai-icon">');
-
-                // Append the assistant message to the chat container
-                chatContainer.append(assistantMessageElement);
-
-                // Add the copy button
-                addCopyButton(assistantMessageElement, message.reply);
-            }
-
-            // Re-run Highlight.js on new content
-            hljs.highlightAll();
-        });
-    }
 
 // Function to identify and format code blocks
 function formatCodeBlocks(reply) {
