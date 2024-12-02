@@ -55,6 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Update the chat title in the database if the title was successfully generated
         if ($chat_title !== null) {
+            $chat_title = substringWords($chat_title,6); 
             update_chat_title($user, $chat_id, $chat_title);
             create_auto_title($chat_id, $chat_title);
         }
@@ -85,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 function generate_chat_title($user_message, $gpt_response, $config_key) {
     // Prepare the message for generating a chat title
     $msg = [
-        ["role" => "system", "content" => "You are an AI assistant that creates concise titles for conversations. The titles should be very short, descriptive, and summarize the main topic in no more than 5 words, ending with no period."],
+        ["role" => "system", "content" => "You are an AI assistant that creates concise, friently, title summaries for chats. use no more than 5 words. Never include code or punctuation. Only use words and if needed, numbers."],
         ["role" => "user", "content" =>  substringWords($user_message,300)],
         ["role" => "assistant", "content" => substringWords($gpt_response,300)]
     ];
@@ -98,7 +99,7 @@ function generate_chat_title($user_message, $gpt_response, $config_key) {
 
     // Check if the title generation was successful and return the generated title
     if (empty($title_response_data['error'])) {
-        return $title_response_data['choices'][0]['message']['content'];
+        return substr($title_response_data['choices'][0]['message']['content'],0,254);
     } else {
         // Log the error and return null
         error_log("Error generating chat title: " . $title_response);

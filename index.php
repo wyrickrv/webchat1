@@ -28,7 +28,7 @@ if (empty($chat_id)) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo $config['app']['app_title']; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="style.v1.03.1.css" rel="stylesheet">
+    <link href="style.v1.03.2.css" rel="stylesheet">
     <!-- Highlight.js CSS -->
     <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
 
@@ -60,6 +60,7 @@ if (empty($chat_id)) {
         var document_type = <?php echo json_encode($_SESSION['document_type']); ?>;
         var document_text = <?php echo json_encode($_SESSION['document_text']); ?>;
 
+        var search_term = "<?php echo isset($_SESSION['search_term']) ? htmlspecialchars($_SESSION['search_term'], ENT_QUOTES, 'UTF-8') : ''; ?>";
     </script>
 
 </head>
@@ -84,7 +85,55 @@ if (empty($chat_id)) {
             <h1><?php echo $config['app']['app_title']; ?></h1>
         </div>
         <div class="col d-flex justify-content-end">
-            <p id="username"><span class="greeting">Hello </span><span class="user-name"><?php echo $username; ?></span> <a title="Log out of the chat interface" href="logout.php" class="logout-link" style="display:inline-block;">Logout</a></p>
+            <div id="username" class="d-flex align-items-center">
+                <span class="greeting">Hello </span>
+                <span class="user-name" style="margin-left: 5px;margin-right:10px;"><?php echo $username; ?></span> 
+
+<?php
+/*
+                <!-- Search Input -->
+                <input 
+                    type="text" 
+                    id="search-input" 
+                    name="search" 
+                    value="<?php echo isset($_SESSION['search_term']) ? htmlspecialchars($_SESSION['search_term'], ENT_QUOTES, 'UTF-8') : ''; ?>" 
+                    placeholder="Search in chats..."
+                >
+
+
+                <!-- Cancel Button -->
+                <button id="cancel-search" style="background: inherit; border: 0 none;" aria-label="Cancel Search">
+                    <!-- Cancel Icon SVG -->
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" width="20px" height="20px">
+                        <!-- SVG path data -->
+                        <path d="M 25 2 C 12.309534 2 2 12.309534 2 25 C 2 37.690466 12.309534 48 25 48 C 37.690466 48 48 37.690466 48 25 C 48 
+                        12.309534 37.690466 2 25 2 z M 25 4 C 36.609534 4 46 13.390466 46 25 C 46 36.609534 36.609534 46 25 46 C 13.390466 46 4 
+                        36.609534 4 25 C 4 13.390466 13.390466 4 25 4 z M 32.990234 15.986328 A 1.0001 1.0001 0 0 0 32.292969 16.292969 L 25 
+                        23.585938 L 17.707031 16.292969 A 1.0001 1.0001 0 0 0 16.990234 15.990234 A 1.0001 1.0001 0 0 0 16.292969 17.707031 L 
+                        23.585938 25 L 16.292969 32.292969 A 1.0001 1.0001 0 1 0 17.707031 33.707031 L 25 26.414062 L 32.292969 33.707031 A 
+                        1.0001 1.0001 0 1 0 33.707031 32.292969 L 26.414062 25 L 33.707031 17.707031 A 1.0001 1.0001 0 0 0 32.990234 15.986328 z"/>
+
+                    </svg>
+                </button>
+
+                <!-- Search Icon Button -->
+                <button id="open-search" style="background: inherit; border: 0 none;" aria-label="Open Search">
+                    <!-- Search Icon SVG -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 50 50">
+                        <!-- SVG path data -->
+                        <path d="M 21 3 C 11.621094 3 4 10.621094 4 20 C 4 29.378906 11.621094 37 21 37 C 24.710938 37 28.140625 35.804688 
+                        30.9375 33.78125 L 44.09375 46.90625 L 46.90625 44.09375 L 33.90625 31.0625 C 36.460938 28.085938 38 24.222656 38 
+                        20 C 38 10.621094 30.378906 3 21 3 Z M 21 5 C 29.296875 5 36 11.703125 36 20 C 36 28.296875 29.296875 35 21 35 C 
+                        12.703125 35 6 28.296875 6 20 C 6 11.703125 12.703125 5 21 5 Z"/>
+
+                    </svg>
+                </button>
+*/
+?>
+
+                <!-- Logout Link -->
+                <a title="Log out of the chat interface" href="logout.php" class="logout-link" style="display:inline-block;">Logout</a>
+            </div>
         </div>
     </div> <!-- End Header Row -->
 
@@ -93,39 +142,23 @@ if (empty($chat_id)) {
     <div class="row flex-grow-1"> <!-- Begin the Content Row -->
 
         <nav class="col-12 col-md-2 d-flex align-items-start flex-column menu">
-
             <!-- Menu content here -->
-            <div class="p-2 ">
-            <!-- Start Menu top content -->
+            <div class="p-2">
+                <!-- Start Menu top content -->
                 <p class="aboutChat"><a title="About text" href="javascript:void(0);" onclick="showAboutUs()">About NHLBI Chat</a></p>
                 <p class="newchat"><a title="Create new chat" href="javascript:void(0);" onclick="startNewChat()">+&nbsp;&nbsp;New Chat</a></p>
-                <?php
-                $path = get_path();
-                $chatTitle = '';
-                foreach ($all_chats as $chat) {
-                    $class= '';
-                    if (!empty($chat_id) && $chat['id'] == $chat_id) {
-                        $class = 'current-chat';  // This is the currently active chat
-                        $chatTitle = htmlspecialchars($chat['title']);
-                    }
-                    echo '<div class="chat-item '.$class.'" id="chat-' . htmlspecialchars($chat['id']) . '">';
-
-                    echo '<a class="chat-link chat-title" title="'.htmlspecialchars($chat['title']).'" href="/'.$application_path.'/' . htmlspecialchars($chat['id']) . '">' . htmlspecialchars($chat['title']) . '</a>';
-                    echo '<img class="chat-icon edit-icon" src="images/chat_edit.png" alt="Edit this chat" title="Edit this chat">';
-                    echo '<img class="chat-icon delete-icon" src="images/chat_delete.png" alt="Delete this chat" title="Delete this chat">';
-                    echo '</div>';
-                }
-                ?>
-
+                    
+                <!-- Add a new container for chat titles with a class for styling -->
+                <div class="chat-titles-container">
+                    <!-- Chat titles will be dynamically inserted here by JavaScript -->
+                    <div id="searching-indicator" class="spinner" style="display: none;"></div>
+                </div>
+                <!-- End chat titles container -->
             </div> <!-- End Menu top content -->
 
             <div class="mt-auto p-2"><!-- Start Menu bottom content -->
-
                 <!-- Session Info Display (for development) -->
-                <p id="session-info" style="color: #FFD700; margin-top: 10px; display: none;">
-                    <!-- Session information will be displayed here -->
-                </p>
-    
+                <p id="session-info" style="color: #FFD700; margin-top: 10px; display: none;"></p>
 
                 <!-- Adding the feedback link -->
                 <p class="feedback "><?php echo $config['app']['feedback_text']; ?>
@@ -136,14 +169,12 @@ if (empty($chat_id)) {
                 <p class=""><a title="Open the training video in a new window" href="<?php echo $config['app']['video_link']; ?>" target="_blank">Training Video</a></p>
                 <p><a title="Open the disclosure information in a new window" href="<?php echo $config['app']['disclosure_link']; ?>" target="_Blank">Vulnerability Disclosure</a></p>
             </div><!-- End Menu bottom content -->
-
-
         </nav> <!-- End the menu column -->
 
         <main id="main-content" class="col-12 col-md-10 d-flex align-items-start flex-column main-content">
 
             <div class="aboutChatWindow">
-                <button class="closeAbout" onclick="closeAboutUs()" aria-label="Close About Us">X</button>
+                <button class="closeAbout" onclick="closeAboutUs()" aria-label="Close About Us"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" width="20px" height="20px"><path d="M 25 2 C 12.309534 2 2 12.309534 2 25 C 2 37.690466 12.309534 48 25 48 C 37.690466 48 48 37.690466 48 25 C 48 12.309534 37.690466 2 25 2 z M 25 4 C 36.609534 4 46 13.390466 46 25 C 46 36.609534 36.609534 46 25 46 C 13.390466 46 4 36.609534 4 25 C 4 13.390466 13.390466 4 25 4 z M 32.990234 15.986328 A 1.0001 1.0001 0 0 0 32.292969 16.292969 L 25 23.585938 L 17.707031 16.292969 A 1.0001 1.0001 0 0 0 16.990234 15.990234 A 1.0001 1.0001 0 0 0 16.292969 17.707031 L 23.585938 25 L 16.292969 32.292969 A 1.0001 1.0001 0 1 0 17.707031 33.707031 L 25 26.414062 L 32.292969 33.707031 A 1.0001 1.0001 0 1 0 33.707031 32.292969 L 26.414062 25 L 33.707031 17.707031 A 1.0001 1.0001 0 0 0 32.990234 15.986328 z" fill="#222222"/></svg></button>
                 <h4>About NHLBI Chat</h4>
 
                     <p class="newchat" style="text-align: center; margin-top: 20px;">
@@ -157,11 +188,11 @@ if (empty($chat_id)) {
                     </p>
 
 
+                <?php echo isset($config['app']['disclaimer_text']) ? $config['app']['disclaimer_text'] : ''; ?>                                                                                        
 
-                <?php echo $config['app']['disclaimer_text']; ?>
             </div>
 
-            <h1 class="print-title"><?php echo $chatTitle;?></h1>
+            <h1 id="print-title"></h1>
 
             <!-- Main content here -->
             <div id="messageList" class="p-2 maincolumn maincol-top chat-container" aria-live="polite"><!-- Flex item chat body top -->
@@ -242,7 +273,7 @@ if (empty($chat_id)) {
 ?>
 
                 <form style="display: inline-block; float: right; margin-top: 15px; margin-right: 30px;">
-                    <button title="Print the existing chat session" aria-label="Print button" onClick="printChat()" id="printButton">Print</button>
+                    <button title="Print the existing chat session" aria-label="Print button" onclick="return printChat()" id="printButton">Print</button>
                 </form>
             </div><!-- End Chat body bottom -->
         </main> <!-- End the main-content column -->
@@ -269,11 +300,18 @@ if (empty($chat_id)) {
     <!-- Include Session Handler JS -->
     <script src="session_handler.js"></script>
 
-<script src="script.v1.03.1.js"></script>
+<script src="script.v1.03.2.js"></script>
 <script>
-    function printChat() {
-        window.print();
-    }
+function printChat() {
+    // Prevent the default form submission behavior
+    event.preventDefault();
+    
+    // Use window.print() which opens the print dialog
+    window.print();
+    
+    // Return false to prevent any potential page reload
+    return false;
+}
 </script>
 
 </body>

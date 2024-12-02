@@ -18,7 +18,6 @@ $authorizationUrl = $authorizationUrlBase . '?' . http_build_query([
     'scope' => $scope,
     'state' => $state
 ]);
-file_put_contents("mylog.log", "authorizationUrl = $authorizationUrl\n\n\n", FILE_APPEND);
 header('Location: ' . $authorizationUrl);
 exit;
 

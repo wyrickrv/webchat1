@@ -23,7 +23,8 @@ if (isset($_GET['remove']) && $_GET['remove'] == '1') {
     update_chat_document($user, $chat_id, '', '','');
 
     // Redirect to the main page with chat_id
-    header('Location: index.php?chat_id=' . urlencode($chat_id));
+    #header('Location: index.php?chat_id=' . urlencode($chat_id));
+    header('Location: ' . urlencode($chat_id));
     exit;
 }
 
@@ -60,9 +61,9 @@ if (isset($_FILES['uploadDocument'])) {
     }
 
     // Redirect back to the index page
-    header('Location: index.php?chat_id=' . urlencode($chat_id));
+    header('Location: ' . urlencode($chat_id));
 } else {
-    header('Location: index.php?chat_id=' . urlencode($chat_id));
+    header('Location: ' . urlencode($chat_id));
 }
 
 // Prevent accidental output by stopping the script here

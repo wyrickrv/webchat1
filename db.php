@@ -46,7 +46,7 @@ function create_chat($user, $title, $summary, $deployment, $document_name, $docu
     $guid = str_replace('-','',$guid);
     $temperature= $_SESSION['temperature'];
     $stmt = $pdo->prepare("INSERT INTO chat (id, user, title, summary, deployment, temperature, document_name, document_text, timestamp) VALUES (:id, :user, :title, :summary, :deployment, :temperature, :document_name, :document_text, NOW())");
-    $stmt->execute(['id' => $guid, 'user' => $user, 'title' => $title, 'summary' => $summary, 'deployment' => $deployment, 'temperature'=>$temperature, 'document_name' => $document_name, 'document_text' => $document_text]);
+    $stmt->execute(['id' => $guid, 'user' => $user, 'title' => substr($title,0,254), 'summary' => $summary, 'deployment' => $deployment, 'temperature'=>$temperature, 'document_name' => $document_name, 'document_text' => $document_text]);
     return $guid;
     #return $pdo->lastInsertId();
 }
@@ -109,7 +109,7 @@ function create_auto_title($chat_id, $title) {
     $api_endpoint = $_SESSION['api_endpoint'] ?? null;
     $uri = $_SERVER['HTTP_REFERER'];
     $stmt = $pdo->prepare("INSERT INTO auto_title (chat_id, title, uri, api_endpoint, timestamp) VALUES (:chat_id, :title, :uri, :api_endpoint, NOW())");
-    $stmt->execute(['chat_id' => $chat_id, 'title'=>$title, 'uri' => $uri, 'api_endpoint' => $api_endpoint]);
+    $stmt->execute(['chat_id' => $chat_id, 'title'=>substr($title,0,254), 'uri' => $uri, 'api_endpoint' => $api_endpoint]);
     return $pdo->lastInsertId();
 }
 
@@ -146,19 +146,87 @@ function get_all_exchanges($chat_id, $user) {
     return $output;
 }
 
-// Get all chats for a given user from the database, ordered by timestamp
-function get_all_chats($user) {
+function get_all_chats($user, $search = '') {
     global $pdo;
-    $stmt = $pdo->prepare("SELECT * FROM chat WHERE user = :user AND deleted = 0 ORDER BY timestamp DESC");
+
+    // Base SQL query
+    $sql = "
+    SELECT 
+        c.id, c.user, c.title, c.deployment, c.temperature, 
+        c.new_title, c.document_name, c.deleted,
+        GREATEST(
+            COALESCE(c.timestamp, '1970-01-01'), 
+            COALESCE(e.latest_timestamp, '1970-01-01')
+        ) AS latest_interaction
+    FROM chat c
+    LEFT JOIN (
+        SELECT chat_id, MAX(timestamp) AS latest_timestamp
+        FROM exchange
+        GROUP BY chat_id
+    ) e ON c.id = e.chat_id
+    WHERE 
+        c.user = :user
+        AND c.deleted = 0
+    ";
+
+    // If a search string is provided, add conditions for title, prompt, or reply
+    if (!empty($search)) {
+        $sql .= " AND (
+            c.title LIKE :search
+            OR EXISTS (
+                SELECT 1 FROM exchange ex 
+                WHERE ex.chat_id = c.id 
+                  AND (ex.prompt LIKE :search OR ex.reply LIKE :search)
+            )
+        )";
+    }
+
+    $sql .= " ORDER BY latest_interaction DESC";
+
+    $stmt = $pdo->prepare($sql);
+
+    // Bind parameters
+    $params = ['user' => $user];
+
+    if (!empty($search)) {
+        $params['search'] = '%' . $search . '%';
+    }
+
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $output = [];
+    foreach($rows as $r) {
+        // Decode HTML entities for the title
+        $r['title'] = html_entity_decode($r['title'], ENT_QUOTES, 'UTF-8');
+        $output[$r['id']] = $r;
+    }
+    return $output;
+}
+
+function old_get_all_chats($user, $search = '') {
+    global $pdo;
+    $stmt = $pdo->prepare("
+SELECT c.id, c.user, c.title, c.deployment, c.temperature, c.new_title, c.document_name, c.deleted,
+       GREATEST(COALESCE(c.timestamp, '1970-01-01'), COALESCE(e.latest_timestamp, '1970-01-01')) AS latest_interaction
+FROM chat c
+LEFT JOIN (
+    SELECT chat_id, MAX(timestamp) AS latest_timestamp
+    FROM exchange
+    GROUP BY chat_id
+) e ON c.id = e.chat_id
+WHERE c.user = :user
+  AND c.deleted = 0
+ORDER BY latest_interaction DESC
+");
     $stmt->execute(['user' => $user]);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $output = [];
     foreach($rows as $r) {
-        #echo "<pre>".print_r($r,1)."</pre>";
+        // Decode HTML entities for the title
+        $r['title'] = html_entity_decode($r['title'], ENT_QUOTES, 'UTF-8');
         $output[$r['id']] = $r;
     }
     return $output;
-    #return $stmt->fetchAll(PDO::FETCH_ASSOC);
 }
 
 // Verify that there is a chat at this id for this user
@@ -207,7 +275,7 @@ function update_chat_title($user, $chat_id, $updated_title) {
 
     // Prepare a SQL statement to update the title
     $stmt = $pdo->prepare("UPDATE chat SET title = :title, new_title = :new_title WHERE id = :id");
-    $stmt->execute(['title' => $updated_title, 'new_title' => '0', 'id' => $chat_id]);
+    $stmt->execute(['title' => substr($updated_title,0,254), 'new_title' => '0', 'id' => $chat_id]);
 }
 
 // Update the temperature in the chat table

@@ -17,7 +17,7 @@ code {
     width: 100%;
 }
 .maincol-top {
-    height: calc(100vh - 250px);
+    height: calc(100vh - 240px);
     overflow-y: scroll;
     margin-bottom: 10px;
     border: solid 0px blue;
@@ -93,6 +93,42 @@ code {
     margin: 15px 0px;
 }
 
+/* Search Input Styles */
+#search-input {
+    width: 0;
+    opacity: 0;
+    border: none;
+    padding: 0;
+    margin-right: 10px;
+    transition: width 0.3s ease, opacity 0.3s ease;
+    display: inline-block;
+    vertical-align: middle;
+    overflow: hidden;
+}
+
+#search-input.open {
+    width: 150px; /* Adjust as needed */
+    opacity: 1;
+    border: 1px solid #ccc;
+    padding: 5px;
+}
+
+/* Cancel Button Styles */
+#cancel-search {
+    display: none;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+/* Align the icons and input */
+#username > * {
+    vertical-align: middle;
+}
+
+/* Optional: Hide the search input when not in use */
+#search-input:not(.open) {
+    pointer-events: none;
+}
 
 
 
@@ -117,6 +153,7 @@ code {
     flex: 0 0 310px; /* Prevent the menu from growing or shrinking */
     overflow: hidden;
     font-size: 85%;
+    padding: 3px;
 }
 
 /* Main content */
@@ -231,7 +268,7 @@ code {
     font-size: 12px;
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
-    z-index: 1000;
+    z-index: 1001;
     pointer-events: none; /* Allows clicks to pass through */
 }
 
@@ -321,8 +358,9 @@ code {
     display: inline-block;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
+    /*text-overflow: ellipsis;*/
     max-width: 165px;
+    max-width: 98%;
     color: white;
     text-decoration: none;
 }
@@ -402,8 +440,9 @@ code {
 }
 .chat-item {
     position: relative;
-    width: 100%;
-    padding: 10px 10px;
+    width: 98%;
+    padding: 7px;
+    margin: 5px 0 5px 3px;
     border-radius: 5px;
 }
 
@@ -411,26 +450,130 @@ code {
     position: absolute;
     right: 0;
     visibility: hidden;
+    cursor: pointer;
+    margin: 0 5px;
+
 }
 
-.edit-icon {
-    right: 30px;
+.copy-title-button, .edit-icon, .delete-icon {
+    width: 24px;
+    height: 24px;
+    padding: 0px;
+    margin: 0 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
 }
-
-.delete-icon {
-    right: 0px;
+.edit-icon img, .delete-icon img{
+    width: 24px;
+    height: 24px;
+}
+.copy-title-button svg {
+    fill: #fff; /* Icon color */
 }
 
 .edit-confirm-icon {
     margin-left: 10px;
 }
 
+.chat-titles-container {
+    /*max-height: 460px;*/ /* Adjust this value as needed */
+    overflow-y: auto;
+    border-bottom: solid #555 1px;
+}
+
+/* For WebKit browsers (Chrome, Safari) */
+.chat-titles-container {
+    scrollbar-width: thin; /* For Firefox */
+    scrollbar-color: #555 #333; /* For Firefox */
+    overflow-y: auto; /* Enable vertical scrolling */
+    overflow-x: show; /* Hide horizontal overflow */
+
+}
+
+.chat-titles-container::-webkit-scrollbar {
+    width: 10px;
+}
+
+.chat-titles-container::-webkit-scrollbar-track {
+    background: #343440;
+    background: #333;
+}
+
+.chat-titles-container::-webkit-scrollbar-thumb {
+    background-color: #555;
+    border-radius: 10px;
+    border: 2px solid #333;
+}
+
 .chat-title {
     display: inline-block;
     white-space: nowrap;
     overflow: hidden;
-    text-overflow: ellipsis;
+    /*text-overflow: ellipsis;*/
     max-width: 300px;
+    position: relative;
+}
+
+
+.chat-link {
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 165px;
+  color: white;
+  text-decoration: none;
+}
+
+.chat-link:hover {
+  text-decoration: underline;
+}
+
+.chat-ellipsis {
+  display: inline-block;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+  background: inherit;
+  padding: 0 5px;
+  box-shadow: -10px 0 10px -2px rgba(84, 90, 96, 0.75);
+  height: 30px;
+  vertical-align: middle;
+  z-index: 10;
+  text-decoration: none; /* Ensure no underline */
+}
+
+.chat-item:hover .chat-ellipsis {
+  opacity: 1; /* Show ellipsis on hover */
+}
+
+.chat-ellipsis:hover {
+  text-decoration: none !important; /* Ensure no underline */
+}
+
+.popup {
+    position: fixed;
+    left: 275px;
+    height: 35px;
+    background-color: #343440;
+    color: white;
+    padding: 0px;
+    border-radius: 5px;
+    display: none;
+    z-index: 1000;
+    border: 1px #223 solid;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.chat-item.hover  {
+    display: flex; /* Show the toolbar */
+    flex-direction: row;
+    opacity: 1; /* Fully visible */
+    pointer-events: auto; /* Enable pointer events */
 }
 
 .edit-field {
@@ -440,6 +583,38 @@ code {
 .current-chat {
     background-color: #545a60;
     min-width: 230px;
+}
+
+.no-results {
+    text-align: center;
+    font-size: 1.2em;
+    color: #999;
+    margin-top: 20px;
+}
+
+.spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    animation: spin 1s linear infinite;
+    margin: 10px auto;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+#searching-indicator {
+    text-align: center;
+    font-size: 1.2em;
+    color: #666;
 }
 
 .logout-link {
@@ -458,7 +633,7 @@ code {
     background-color: #0056b3;
 }
 */
-.print-title {
+#print-title {
     display: none;
 }
 
@@ -486,7 +661,7 @@ code {
     padding: 20px;
     background-color: #f4f4f9;
     border: 1px solid #ccc;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 40px 80px rgba(0, 0, 0, 0.3);
     border-radius: 5px;
     z-index: 1000;
     transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
@@ -503,22 +678,19 @@ code {
 .closeAbout {
     position: sticky;
     top: 0;
-    right: 10px;
     float: right;
     cursor: pointer;
-    font-weight: inherit;
     color: #333;
-    margin-bottom: 10px;
     background-color: #fff;
-    padding: 5px;
     border: none;
     border-radius: 20%;
+    padding-bottom: 5px;
     /*box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);*/
 }
 
 .closeAbout:focus {
-    outline: 2px solid #0056b3;  /* Highlight the button when focused */
-    background-color: #bbb;       /* Change the background color on focus */
+    outline: 1px solid #DDD;  /* Highlight the button when focused */
+    /*background-color: #bbb;*/       /* Change the background color on focus */
 }
 
 /* Show the navbar with the hamburger menu on small screens */
@@ -541,7 +713,7 @@ code {
         display: none;
     }
     .maincol-top {
-        height: calc(100vh - 320px); /* Fill the height minus header */
+        height: calc(100vh - 29.5vh); /* Fill the height minus header */
     }
     .menu.active {
         display: block !important; /* Show menu when active */
@@ -579,7 +751,7 @@ overflow: visible !important;
 
 }
     
-.print-title {
+#print-title {
     display: block;
     font-size: 14pt;
 }
