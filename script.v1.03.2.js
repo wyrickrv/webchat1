@@ -296,44 +296,6 @@ function fetchAndUpdateChatTitles(searchString = '') {
                 });
             }
 
-            // Function to handle hiding popup
-            function old_startHideTimer() {
-                hideTimer = setTimeout(() => {
-                    // Fade out the popup
-                    popup.css('opacity', '0');
-                    
-                    // Hide the popup after fade-out completes
-                    setTimeout(() => {
-                        popup.hide();
-                    }, 150); // Match the transition duration
-                }, 250);
-            }
-
-            function old_revertEditForm(existingChatId) {
-                var originalLink = $('<div>').html($("#chat-" + existingChatId).find('[data-chat-title]').data('chat-title')).text();
-                
-                $("#edit-input-" + existingChatId).replaceWith(`
-                    <a class="chat-link chat-title" 
-                       title="${originalLink}" 
-                       href="/chatdev/${existingChatId}" 
-                       data-chat-id="${existingChatId}" 
-                       data-chat-title="${originalLink}">
-                        ${originalLink}
-                    </a>
-                `);
-                
-                $("#edit-confirm-" + existingChatId).remove();
-                $("#edit-cancel-" + existingChatId).remove();
-                
-                var $restoredLink = $("#chat-" + existingChatId + " .chat-link");
-                $restoredLink.on('mouseenter', function(e) {
-                    const chatId = $(this).data('chat-id');
-                    const chatTitle = $(this).data('chat-title');
-                    showPopup(e, chatId, chatTitle);
-                }).on('mouseleave', startHideTimer);
-            }
-
-
             // Add popup event listeners
             popup.on('mouseenter', () => {
                 if (hideTimer) {
@@ -381,7 +343,7 @@ function fetchAndUpdateChatTitles(searchString = '') {
                 const chatLink = $('<a>', {
                     class: 'chat-link chat-title',
                     title: chat.title,
-                    href: `/chatdev/${chat.id}`,
+                    href: `/${application_path}/${chat.id}`, // Use the application_path variable here
                     text: chat.title,
                     'data-chat-id': chat.id,
                     'data-chat-title': chat.title
@@ -455,7 +417,7 @@ function fetchAndUpdateChatTitles(searchString = '') {
                 $("#edit-input-" + existingChatId).replaceWith(`
                     <a class="chat-link chat-title" 
                        title="${originalLink}" 
-                       href="/chatdev/${existingChatId}" 
+                       href="/${application_path}/${existingChatId}" 
                        data-chat-id="${existingChatId}" 
                        data-chat-title="${originalLink}">
                         ${originalLink}
@@ -614,7 +576,7 @@ function submitEdit(chatId) {
             var originalLink = $('<a>', {
                 class: 'chat-link chat-title',
                 title: newTitle,
-                href: `/chatdev/${chatId}`,
+                href: `/${application_path}/${chatId}`, // Use the application_path variable here
                 text: newTitle,
                 'data-chat-id': chatId,
                 'data-chat-title': newTitle
@@ -631,7 +593,7 @@ function submitEdit(chatId) {
             }).on('mouseleave');
 
             // Optional: Update the page title if this is the current chat
-            if (window.location.pathname.includes(`/chatdev/${chatId}`)) {
+            if (window.location.pathname.includes(`/${application_path}/${chatId}`)) {
                 document.title = newTitle;
             }
         },
