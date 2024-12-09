@@ -78,7 +78,7 @@ if (isset($_POST['model']) && array_key_exists($_POST['model'], $models)) {
 $all_chats = get_all_chats($user);
 if (!empty($chat_id) && !empty($all_chats[$chat_id])) {
     $deployment = $_SESSION['deployment'] = $all_chats[$chat_id]['deployment'];  // This is the currently active chat
-/*
+
     $_SESSION['deployment'] = $all_chats[$chat_id]['deployment'];
     $_SESSION['temperature'] = $all_chats[$chat_id]['temperature'];
     if (!empty($all_chats[$chat_id]['document_name'])) {
@@ -87,13 +87,14 @@ if (!empty($chat_id) && !empty($all_chats[$chat_id])) {
         $_SESSION['document_type'] = $doc['document_type'];
         $_SESSION['document_text'] = $doc['document_text'];
     }
-*/
 
+/*
         $_SESSION['deployment'] = $all_chats[$chat_id]['deployment'];
         $_SESSION['temperature'] = $all_chats[$chat_id]['temperature'];
         $_SESSION['document_name'] = $all_chats[$chat_id]['document_name'];
         $_SESSION['document_type'] = $all_chats[$chat_id]['document_type'];
         $_SESSION['document_text'] = $all_chats[$chat_id]['document_text'];
+*/
 }
 
 if (empty($_SESSION['deployment'])) {
