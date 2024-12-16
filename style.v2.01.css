@@ -96,17 +96,22 @@ code {
 /* Search Input Styles */
 #search-input {
     width: 0;
+    width: 250px; /* Adjust as needed */
     opacity: 0;
+    opacity: 1;
     border: none;
+    border: 1px solid #ccc;
     padding: 0;
+    padding: 5px;
     margin-right: 10px;
+    margin: 10px 0px;
     transition: width 0.3s ease, opacity 0.3s ease;
     display: inline-block;
     vertical-align: middle;
     overflow: hidden;
 }
 
-#search-input.open {
+#snearch-input.open {
     width: 150px; /* Adjust as needed */
     opacity: 1;
     border: 1px solid #ccc;
@@ -116,7 +121,7 @@ code {
 /* Cancel Button Styles */
 #cancel-search {
     display: none;
-    margin-right: 10px;
+    margin-right: 0px;
     cursor: pointer;
 }
 
@@ -126,7 +131,7 @@ code {
 }
 
 /* Optional: Hide the search input when not in use */
-#search-input:not(.open) {
+#snearch-input:not(.open) {
     pointer-events: none;
 }
 
@@ -523,6 +528,7 @@ code {
   max-width: 165px;
   color: white;
   text-decoration: none;
+  width: 96%;
 }
 
 .chat-link:hover {

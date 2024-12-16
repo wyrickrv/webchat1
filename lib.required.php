@@ -86,15 +86,11 @@ if (!empty($chat_id) && !empty($all_chats[$chat_id])) {
         $_SESSION['document_name'] = $doc['document_name'];
         $_SESSION['document_type'] = $doc['document_type'];
         $_SESSION['document_text'] = $doc['document_text'];
+    } else {
+        $_SESSION['document_name'] = '';
+        $_SESSION['document_type'] = '';
+        $_SESSION['document_text'] = '';
     }
-
-/*
-        $_SESSION['deployment'] = $all_chats[$chat_id]['deployment'];
-        $_SESSION['temperature'] = $all_chats[$chat_id]['temperature'];
-        $_SESSION['document_name'] = $all_chats[$chat_id]['document_name'];
-        $_SESSION['document_type'] = $all_chats[$chat_id]['document_type'];
-        $_SESSION['document_text'] = $all_chats[$chat_id]['document_text'];
-*/
 }
 
 if (empty($_SESSION['deployment'])) {

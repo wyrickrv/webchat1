@@ -57,7 +57,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($chat_title !== null) {
             $chat_title = substringWords($chat_title,6); 
             update_chat_title($user, $chat_id, $chat_title);
-            create_auto_title($chat_id, $chat_title);
         }
     }
 
@@ -69,6 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'chat_id' => $chat_id,
         'new_chat_id' => $new_chat_id
     ];
+    #echo "THIS IS THE GPT Response: " . print_r($response,1); die();
 
     // Send the JSON-encoded response and exit the script
     echo json_encode($response);

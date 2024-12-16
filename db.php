@@ -100,24 +100,24 @@ function create_exchange($chat_id, $prompt, $reply) {
         'document_text' => $document_text
     ]);
     
-    return $pdo->lastInsertId();
-}
+    $insert_id = $pdo->lastInsertId();
 
-// Create a new exchange in the database with the given chat ID, prompt, and reply
-function create_auto_title($chat_id, $title) {
-    global $pdo;
-    $api_endpoint = $_SESSION['api_endpoint'] ?? null;
-    $uri = $_SERVER['HTTP_REFERER'];
-    $stmt = $pdo->prepare("INSERT INTO auto_title (chat_id, title, uri, api_endpoint, timestamp) VALUES (:chat_id, :title, :uri, :api_endpoint, NOW())");
-    $stmt->execute(['chat_id' => $chat_id, 'title'=>substr($title,0,254), 'uri' => $uri, 'api_endpoint' => $api_endpoint]);
-    return $pdo->lastInsertId();
+    $stmt = $pdo->prepare("UPDATE chat SET timestamp = NOW() WHERE id = :id");
+    $stmt->execute(['id' => $chat_id]);
+
+    return $insert_id;
+
 }
 
 function get_uploaded_image_status($chat_id) {
     global $pdo;
+    #echo "working here in get_uploaded<br>\n";
     if (empty($chat_id)) return false;
     
-    $stmt = $pdo->prepare("SELECT document_name, document_type, document_text FROM chat WHERE id = :chat_id LIMIT 1");
+    $sql = "SELECT document_name, document_type, document_text FROM chat WHERE id = :chat_id LIMIT 1";
+    #echo $sql . "\n";
+    $stmt = $pdo->prepare($sql);
+    #$stmt = $pdo->prepare("SELECT document_name, document_type, document_text FROM chat WHERE id = :chat_id LIMIT 1");
     $stmt->execute(['chat_id' => $chat_id]);
     $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
     return $result[0];
@@ -151,37 +151,22 @@ function get_all_chats($user, $search = '') {
 
     // Base SQL query
     $sql = "
-    SELECT 
-        c.id, c.user, c.title, c.deployment, c.temperature, 
-        c.new_title, c.document_name, c.deleted,
-        GREATEST(
-            COALESCE(c.timestamp, '1970-01-01'), 
-            COALESCE(e.latest_timestamp, '1970-01-01')
-        ) AS latest_interaction
+    SELECT
+        c.id, c.user, c.title, c.deployment, c.temperature,
+        c.new_title, c.document_name, c.deleted, c.timestamp AS latest_interaction
     FROM chat c
-    LEFT JOIN (
-        SELECT chat_id, MAX(timestamp) AS latest_timestamp
-        FROM exchange
-        GROUP BY chat_id
-    ) e ON c.id = e.chat_id
-    WHERE 
+    LEFT JOIN exchange e ON c.id = e.chat_id
+    WHERE
         c.user = :user
         AND c.deleted = 0
     ";
 
-    // If a search string is provided, add conditions for title, prompt, or reply
+    // If a search string is provided, add conditions for title
     if (!empty($search)) {
-        $sql .= " AND (
-            c.title LIKE :search
-            OR EXISTS (
-                SELECT 1 FROM exchange ex 
-                WHERE ex.chat_id = c.id 
-                  AND (ex.prompt LIKE :search OR ex.reply LIKE :search)
-            )
-        )";
+        $sql .= " AND (c.title LIKE :search OR e.prompt LIKE :search OR e.reply LIKE :search )";
     }
 
-    $sql .= " ORDER BY latest_interaction DESC";
+    $sql .= " ORDER BY c.timestamp DESC";
 
     $stmt = $pdo->prepare($sql);
 
@@ -193,32 +178,6 @@ function get_all_chats($user, $search = '') {
     }
 
     $stmt->execute($params);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    $output = [];
-    foreach($rows as $r) {
-        // Decode HTML entities for the title
-        $r['title'] = html_entity_decode($r['title'], ENT_QUOTES, 'UTF-8');
-        $output[$r['id']] = $r;
-    }
-    return $output;
-}
-
-function old_get_all_chats($user, $search = '') {
-    global $pdo;
-    $stmt = $pdo->prepare("
-SELECT c.id, c.user, c.title, c.deployment, c.temperature, c.new_title, c.document_name, c.deleted,
-       GREATEST(COALESCE(c.timestamp, '1970-01-01'), COALESCE(e.latest_timestamp, '1970-01-01')) AS latest_interaction
-FROM chat c
-LEFT JOIN (
-    SELECT chat_id, MAX(timestamp) AS latest_timestamp
-    FROM exchange
-    GROUP BY chat_id
-) e ON c.id = e.chat_id
-WHERE c.user = :user
-  AND c.deleted = 0
-ORDER BY latest_interaction DESC
-");
-    $stmt->execute(['user' => $user]);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $output = [];
     foreach($rows as $r) {

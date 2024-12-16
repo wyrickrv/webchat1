@@ -8,6 +8,8 @@ if (empty($user)) {
     // If the user is not authenticated, output an error message and exit the script
     die("User not authenticated");
 }
+$_SESSION['searchr_term'] = '';
+unset($_SESSION['search_term']);
 
 $deployment = $config['azure']['default'];
 $document_name = $_SESSION['document_name'] = '';

@@ -15,20 +15,16 @@ try {
     }
     $user = $_SESSION['user_data']['userid'];
 
-    $search = isset($_GET['search']) ? trim($_GET['search']) : '';
-    if ($search !== '') {
-        $_SESSION['search_term'] = $search; // Update session with new search term
-    } else {
-        unset($_SESSION['search_term']); // Clear search term from session
+    // Fetch search input
+    if ($_GET['clearSearch']) {
+        $_GET['search'] = '';
+        $_SESSION['search_term'] = '';
     }
+    $search = (!empty($_GET['search'])) ? trim($_GET['search']) : '';
+    $_SESSION['search_term'] = $search; // Update session with new search term
+    $chats = get_all_chats($user, $search); // Query database
 
-    // Use the session search term if no search string is passed
-    if ($search === '' && isset($_SESSION['search_term'])) {
-        $search = $_SESSION['search_term'];
-    }
-
-    $chats = get_all_chats($user, $search);
-
+    // Output the results as JSON
     echo json_encode($chats);
 } catch (Exception $e) {
     http_response_code(400); // Bad Request
