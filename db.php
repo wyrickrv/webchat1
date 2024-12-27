@@ -51,6 +51,42 @@ function create_chat($user, $title, $summary, $deployment, $document_name, $docu
     #return $pdo->lastInsertId();
 }
 
+// Function to get token count using token_counter.py
+function get_token_count($text, $encoding_name = "cl100k_base") {
+    // Define a maximum chunk size to avoid issues with very large strings
+    $max_chunk_size = 100000; // Adjust this based on your environment
+
+    // If the text is smaller than the max chunk size, process it directly
+    if (strlen($text) <= $max_chunk_size) {
+        return call_token_counter($text, $encoding_name);
+    }
+
+    // Split the text into chunks and process each chunk separately
+    $chunks = str_split($text, $max_chunk_size);
+    $total_tokens = 0;
+
+    foreach ($chunks as $chunk) {
+        $total_tokens += call_token_counter($chunk, $encoding_name);
+    }
+
+    return $total_tokens;
+}
+
+// Helper function to call the token_counter.py script
+function call_token_counter($text, $encoding_name) {
+    // Escape arguments to prevent command injection
+    $escaped_text = escapeshellarg($text);
+    $escaped_encoding = escapeshellarg($encoding_name);
+
+    $command = "python3 token_counter.py text $escaped_encoding $escaped_text";
+    $output = shell_exec($command);
+
+    // Remove any whitespace or newlines from the output
+    $token_count = intval(trim($output));
+
+    return $token_count;
+}
+
 // Create a new exchange in the database with the given chat ID, prompt, and reply
 function create_exchange($chat_id, $prompt, $reply) {
     global $pdo;
@@ -58,10 +94,10 @@ function create_exchange($chat_id, $prompt, $reply) {
     $temperature = $_SESSION['temperature'] ?? null;
     $api_endpoint = $_SESSION['api_endpoint'] ?? null;
     $uri = $_SERVER['HTTP_REFERER'];
+    $user = $_SESSION['user_data']['userid'] ?? null; // Assuming you have a session variable for username
     
     // Retrieve document information from the chat table
     $document_status = get_uploaded_image_status($chat_id);
-    #error_log('Database test: ' . print_r($document_status,1));
     
     // Initialize document details
     $document_name = null;
@@ -80,21 +116,28 @@ function create_exchange($chat_id, $prompt, $reply) {
         }
     }
 
-    // Prepare the INSERT statement with placeholders for document details
+    // Calculate token lengths
+    $prompt_token_length = get_token_count($prompt);
+    $reply_token_length = get_token_count($reply);
+
+    // Prepare the INSERT statement with placeholders for document details and token lengths
     $stmt = $pdo->prepare("
-        INSERT INTO exchange (chat_id, deployment, api_endpoint, temperature, uri, prompt, reply, document_name, document_type, document_text, timestamp)
-        VALUES (:chat_id, :deployment, :api_endpoint, :temperature, :uri, :prompt, :reply, :document_name, :document_type, :document_text, NOW())
+        INSERT INTO exchange (chat_id, user, deployment, api_endpoint, temperature, uri, prompt, prompt_token_length, reply, reply_token_length, document_name, document_type, document_text, timestamp)
+        VALUES (:chat_id, :user, :deployment, :api_endpoint, :temperature, :uri, :prompt, :prompt_token_length, :reply, :reply_token_length, :document_name, :document_type, :document_text, NOW())
     ");
     
     // Bind the parameters
     $stmt->execute([
         'chat_id' => $chat_id,
+        'user' => $user,
         'deployment' => $deployment,
         'api_endpoint' => $api_endpoint,
         'temperature' => $temperature,
         'uri' => $uri,
         'prompt' => $prompt,
+        'prompt_token_length' => $prompt_token_length,
         'reply' => $reply,
+        'reply_token_length' => $reply_token_length,
         'document_name' => $document_name,
         'document_type' => $document_type,
         'document_text' => $document_text
@@ -106,7 +149,6 @@ function create_exchange($chat_id, $prompt, $reply) {
     $stmt->execute(['id' => $chat_id]);
 
     return $insert_id;
-
 }
 
 function get_uploaded_image_status($chat_id) {

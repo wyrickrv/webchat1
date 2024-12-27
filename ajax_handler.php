@@ -6,6 +6,8 @@ require_once 'db.php';
 #define('HARDCODED_DEPLOYMENT','azure-gpt35');
 define('HARDCODED_DEPLOYMENT','azure-gpt3-16k');
 
+$user = $_SESSION['user_data']['userid'] ?? null; // Assuming you have a session variable for username
+
 // Check if the request method is POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -20,8 +22,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $new_chat_id = '';
     $document_name = $_SESSION['document_name'] ?? ''; // Use null coalescing operator for default values
     $document_text = $_SESSION['document_text'] ?? '';
-    #$document_name = (empty($_SESSION['document_name'])) ? '' : $_SESSION['document_name'];
-    #$document_text = (empty($_SESSION['document_text'])) ? '' : $_SESSION['document_text'];
 
     // Create a new chat session if no chat ID is provided
     if (empty($chat_id)) {
