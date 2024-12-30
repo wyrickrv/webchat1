@@ -290,8 +290,9 @@ function get_chat_thread($message, $chat_id, $user, $active_config)
     return $messages;
 }
 
-function get_gpt_response($message, $chat_id, $user) {
-    $active_config = load_configuration($GLOBALS['deployment']);
+function get_gpt_response($message, $chat_id, $user, $deployment) {
+    #$active_config = load_configuration($GLOBALS['deployment']);
+    $active_config = load_configuration($deployment);
     $msg = get_chat_thread($message, $chat_id, $user, $active_config);
     #die(print_r($msg,1));
 

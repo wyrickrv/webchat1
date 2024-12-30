@@ -298,7 +298,7 @@ foreach(array_keys($models) as $m) {
 <script src="scripts/popup.js"></script>
 <script src="scripts/ui.js"></script>
 <script src="scripts/listeners.js"></script>
-<script src="script.v2.01.js"></script>
+<script src="script.v2.02.js"></script>
 <script>
 function printChat() {
     // Prevent the default form submission behavior

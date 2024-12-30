@@ -15,6 +15,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $user_message = base64_decode($_POST['message']); // Decode from Base64
     //$user_message = filter_input(INPUT_POST, 'message', FILTER_SANITIZE_STRING);
 
+    $deployment = isset($_POST['deployment']) ? $_POST['deployment'] : 'default_deployment'; // Provide a default if needed
+
+
     // Retrieve the chat ID from the POST data
     $chat_id = filter_input(INPUT_POST, 'chat_id', FILTER_SANITIZE_STRING);
 
@@ -45,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     */
 
     // Get the GPT response to the user's message using the get_gpt_response() function
-    $gpt_response = get_gpt_response($user_message, $id, $user);
+    $gpt_response = get_gpt_response($user_message, $id, $user, $deployment);
     #echo "THIS IS THE GPT Response: " . print_r($gpt_response,1); die();
 
     if (!empty($gpt_response['error']) && $gpt_response['error'] == 1) {

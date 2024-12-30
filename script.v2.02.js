@@ -100,13 +100,17 @@ $(document).ready(function() {
         }
 
         if (messageContent !== "") {
+            // **Retrieve the selected deployment (model)**
+            var deployment = $('#model_select select[name="model"]').val();
+
             $.ajax({
                 type: "POST",
                 url: "ajax_handler.php",
                 data: {
                     message: messageContent,
                     chat_id: chatId,
-                    user: user
+                    user: user,
+                    deployment: deployment  // **Include the deployment here**
                 },
 
                 beforeSend: function() {
