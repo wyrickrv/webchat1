@@ -176,6 +176,12 @@ $(document).ready(function() {
 
                     var assistantMessageElement = $('<div class="message assistant-message" style="margin-bottom: 30px;"></div>');
 
+
+                    // Prepend the assistant's icon
+                    var imgSrc = 'images/' + deployments[deployment].image;
+                    var imgAlt = deployments[deployment].image_alt;
+                    assistantMessageElement.prepend('<img src="' + imgSrc + '" alt="' + imgAlt + '" class="openai-icon">');
+
                     if (image_gen_name) {
                         // Display the generated image
                         var imgSrc = './image_gen/small/' + image_gen_name;
