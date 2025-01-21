@@ -51,12 +51,38 @@ foreach(array_keys($models) as $m) {
         var temperature = "<?php echo $_SESSION['temperature']; ?>";
         var chatContainer;
 
-        // Pass document data from PHP session to JavaScript
-        var document_name = <?php echo (!empty($_SESSION['document_name'])) ? json_encode($_SESSION['document_name']): '""'; ?>;
-        var document_type = <?php echo (!empty($_SESSION['document_type'])) ? json_encode($_SESSION['document_type']): '""'; ?>;
-        var document_text = <?php echo (!empty($_SESSION['document_text'])) ? json_encode($_SESSION['document_text']): '""'; ?>;
+        var document_name = '';
+        var document_type = '';
+        var document_text = '';
+        var document_source = '';
+        <?php
+
+        if (!(
+            stristr($deployment, 'dall-e') ||
+            (
+                stristr($deployment, 'o1') &&
+                !empty($_SESSION['document_type']) && 
+                strpos($_SESSION['document_type'], 'image/') === 0
+            )
+        )) {
+            if (!empty($_SESSION['document_name'])) {
+                echo "document_name = " . json_encode($_SESSION['document_name']) . ";";
+            }
+            if (!empty($_SESSION['document_type'])) {
+                echo "document_type = " . json_encode($_SESSION['document_type']) . ";";
+            }
+            if (!empty($_SESSION['document_text'])) {
+                echo "document_text = " . json_encode($_SESSION['document_text']) . ";";
+            }
+            if (!empty($_SESSION['document_source'])) {
+                echo "document_source = " . json_encode($_SESSION['document_source']) . ";";
+            }
+        }
+
+        ?>
 
         var search_term = "<?php echo isset($_SESSION['search_term']) ? htmlspecialchars($_SESSION['search_term'], ENT_QUOTES, 'UTF-8') : ''; ?>";
+
     </script>
 
 </head>
@@ -208,7 +234,9 @@ foreach(array_keys($models) as $m) {
 
 
                 <form onsubmit="saveMessage()" id="model_select" action="" method="post" style="display: inline-block; margin-left: 20px; margin-right: 10px; margin-top: 15px; border-top: 1px solid white; ">
-                    <label for="model" title="">Select Model</label>: <select title="Choose between available chat models" name="model" onchange="document.getElementById('model_select').submit();">
+                    <label for="model" title="">Select Model</label>: 
+                    <select title="Choose between available chat models" name="model"  onchange="updatePlaceholder(); document.getElementById('model_select').submit();">
+
                         <?php
                         foreach ($models as $m => $modelconfig) {
                             #echo '<pre>'.print_r($modelconfig,1).'</pre>';
@@ -221,6 +249,9 @@ foreach(array_keys($models) as $m) {
                         ?>
                     </select>
                 </form>
+
+<?php if ($config[$deployment]['host'] !== 'Dall-e' && $deployment !== 'azure-o1-preview') { ?>
+
                 <form onsubmit="saveMessage()" id="temperature_select" action="" method="post" style="display: inline-block; margin-left: 20px; margin-right: 10px; margin-top: 15px; border-top: 1px solid white; ">
                     <label for="temperature">Temperature</label>: <select title="Choose a temperature setting between 0 and 2. A temperature of 0 means the responses will be very deterministic (meaning you almost always get the same response to a given prompt). A temperature of 2 means the responses can vary substantially." name="temperature" onchange="document.getElementById('temperature_select').submit();">
                         <?php
@@ -232,6 +263,9 @@ foreach(array_keys($models) as $m) {
                     </select>
                 </form>
 
+<?php } ?>
+<?php if ($config[$deployment]['host'] !== 'Dall-e') { ?>
+
                 <!-- File Upload Form -->
                 <form onSubmit="saveMessage();" method="post" action="upload.php" id="document-uploader" enctype="multipart/form-data" style="display: inline-block; margin-top: 10px;">
                     <!-- Hidden input for chat_id -->
@@ -239,7 +273,8 @@ foreach(array_keys($models) as $m) {
 
                     <?php if (!empty($_SESSION['document_name'])): ?>
                         <p style="white-space: nowrap;">Uploaded file: <span style="white-space: nowrap;color: salmon;"><?php echo htmlspecialchars($_SESSION['document_name']); ?></span>
-                            <a href="upload.php?remove=1&chat_id=<?php echo htmlspecialchars($_GET['chat_id']); ?>" style="color: blue">Remove</a>
+                            <a href="upload.php?remove=1&chat_id=<?php echo htmlspecialchars($_GET['chat_id']); ?>" style="color: blue" onclick="updatePlaceholder();">Remove</a>
+
                             <?php if (!empty($_SESSION['document_type']) && strpos($_SESSION['document_type'], 'image/') === 0): ?>
                                 <!-- Display thumbnail for image -->
                                 <img src="<?php echo $_SESSION['document_text']; ?>" alt="Uploaded Image Thumbnail" style="max-width: 60px; max-height: 60px;margin-top: -10px;" />
@@ -251,9 +286,12 @@ foreach(array_keys($models) as $m) {
                         </label>
                         <input id="uploadDocument" type="file" name="uploadDocument" aria-label="File upload button" 
                                accept=".pdf,.docx,.pptx,.txt,.md,.json,.xml,.png,.jpg,.jpeg,.gif" 
-                               style="display: none;" required onchange="this.form.submit()" />
+                               style="display: none;" required onchange="this.form.submit(); updatePlaceholder();" />
+
+
                     <?php endif; ?>
                 </form>
+<?php } ?>
 
 <?php 
                     if(!empty($_SESSION['error'])) {

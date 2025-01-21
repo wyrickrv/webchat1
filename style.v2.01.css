@@ -413,10 +413,11 @@ code {
     outline: none;
 }
 
-.image-message img{
-    margin: 0px auto;
-    max-width: 600px;
-    max-height: 500px;
+.image-message {
+    display: block;
+    margin: 20px 40px;
+    max-width: 512px;
+    max-height: 512px;
 }
 
 .waiting-indicator {
@@ -430,7 +431,7 @@ code {
 }
 .openai-icon {
     width: 30px;
-    height: 30px;
+    /*height: 30px;*/
     margin: 0px;
     margin-right: 9px;
     margin-top: -5px;

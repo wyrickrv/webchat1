@@ -38,7 +38,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $id = $chat_id;
     }
 
-
     /*
     echo "THIS IS THE deployment: " . $deployment . "\n";
     echo "THIS IS THE config: " . print_r($config,1) . "\n";
@@ -49,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Get the GPT response to the user's message using the get_gpt_response() function
     $gpt_response = get_gpt_response($user_message, $id, $user, $deployment);
-    #echo "THIS IS THE GPT Response: " . print_r($gpt_response,1); die();
+    #echo "THIS IS THE GPT Response: <pre>" . print_r($gpt_response,1)."</pre>"; die();
 
     if (!empty($gpt_response['error']) && $gpt_response['error'] == 1) {
         $gpt_response['message'] = preg_replace('/Please go here.*/','',$gpt_response['message']);
@@ -68,12 +67,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Prepare the response data to send back to the client
     $response = [
-        'deployment' => $gpt_response['deployment'] ?? null, 
+        'eid' => $gpt_response['eid'] ?? null,
+        'deployment' => $deployment ?? null, 
         'error' => $gpt_response['error'] ?? null,
-        'gpt_response' => $gpt_response['message'] ?? null, 
+        'gpt_response' => $gpt_response['message'] ?? null,
         'chat_id' => $chat_id,
-        'new_chat_id' => $new_chat_id
+        'new_chat_id' => $new_chat_id,
+        'image_gen_name' => $gpt_response['image_gen_name'] ?? null // Include image filename
     ];
+
     #echo "THIS IS THE GPT Response: " . print_r($response,1); die();
 
     // Send the JSON-encoded response and exit the script

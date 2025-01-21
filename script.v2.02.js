@@ -4,10 +4,46 @@ var searchingIndicator;
 var chatTitlesContainer;
 var popup;
 
+function waitForImagesToLoad(container, callback) {
+    const images = container.find('img');
+    let remaining = images.length;
+
+    if (remaining === 0) {
+        callback(); // No images to wait for
+        return;
+    }
+
+    images.each(function () {
+        if (this.complete) {
+            // Image is already loaded (cached)
+            remaining--;
+            if (remaining === 0) callback();
+        } else {
+            // Wait for the image to load
+            $(this).on('load error', function () {
+                remaining--;
+                if (remaining === 0) callback();
+            });
+        }
+    });
+}
+
+let scrollTimeout;
+function debounceScroll() {
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(scrollToBottom, 100); // Adjust the delay as needed
+}
+
+function scrollToBottom() {
+    chatContainer.scrollTop(chatContainer.prop("scrollHeight"));
+}
+
+
 $(document).ready(function() {
 
     searchingIndicator = document.getElementById('searching-indicator');
     chatTitlesContainer = document.querySelector('.chat-titles-container');
+    updatePlaceholder(); // update the placeholder text in the message window
 
     // Run on page load
     adjustChatTitlesHeight();
@@ -65,6 +101,8 @@ $(document).ready(function() {
             userMessageElement.prepend('<img src="images/user.png" class="user-icon" alt="User icon">');
             chatContainer.append(userMessageElement);
 
+            console.log("THIS IS THE DEPLOYMENT --- "+deployment);
+
             // Display the image only if document_type is an image MIME type
             if (document_text && document_type) { // Ensure both document_text and document_type are present
                 // Check if document_type starts with 'image/'
@@ -92,7 +130,9 @@ $(document).ready(function() {
             }
 
             // Scroll to the bottom of the chat container
-            chatContainer.scrollTop(chatContainer.prop("scrollHeight"));
+            //chatContainer.scrollTop(chatContainer.prop("scrollHeight"));
+            //scrollToBottom();
+            debounceScroll();
 
             // Clear the textarea and localStorage right after form submission
             userMessage.val("");
@@ -122,71 +162,90 @@ $(document).ready(function() {
 
                 success: function(response) {
                     $('.waiting-indicator').hide();
-
                     var jsonResponse = JSON.parse(response);
+                    var eid = jsonResponse['eid']; // The Exchange record ID
                     var gpt_response = jsonResponse['gpt_response'];
-
-                    // Store the raw response
-                    var raw_gpt_response = gpt_response;
-
+                    var image_gen_name = jsonResponse['image_gen_name']; // Filename for the generated image
                     var deployment = jsonResponse['deployment'];
                     var error = jsonResponse['error'];
 
-                    // Handle errors in the response
                     if (error) {
-                        console.log("FOUND AN ERROR IN THE RESPONSE");
                         alert('Error: ' + gpt_response);
                         return;
                     }
 
-                    // Check if gpt_response is null or undefined
-                    if (!gpt_response) {
-                        gpt_response = "The message could not be processed.";
+                    var assistantMessageElement = $('<div class="message assistant-message" style="margin-bottom: 30px;"></div>');
+
+                    if (image_gen_name) {
+                        // Display the generated image
+                        var imgSrc = './image_gen/small/' + image_gen_name;
+                        var imgElement = $('<img>')
+                            .attr('class', 'image-message')
+                            .attr('src', imgSrc)
+                            .attr('alt', 'Generated Image')
+                            .on('load', function () {
+                                // Scroll to the bottom only after the image is loaded
+                                debounceScroll();
+                            });
+
+                        assistantMessageElement.append(imgElement);
+
+                        // Add the download button for the full-size image
+                        addDownloadButton(assistantMessageElement, './image_gen/fullsize/' + image_gen_name);
+                    } else if (gpt_response) {
+                        // Display the text response
+                        gpt_response = formatCodeBlocks(gpt_response);
+                        assistantMessageElement.append('<span>' + gpt_response + '</span>');
+                        addCopyButton(assistantMessageElement, gpt_response); // Add copy button for text
                     }
 
-                    // Process code blocks in gpt_response
-                    gpt_response = formatCodeBlocks(gpt_response);
+                    // Append the message to the chat container
+                    chatContainer.append(assistantMessageElement);
 
-			        console.log(jsonResponse);
-                    const path = "/" + application_path + "/" + jsonResponse.new_chat_id;
-                    console.log("this is the application path: " + path);
-
-                    if (jsonResponse.new_chat_id) {
-                        window.location.href = path;
-                        return;
-                    }
                     fetchAndUpdateChatTitles(search_term,0);
 
-                    // Check if the deployment configuration exists
-                    if (deployments[deployment]) {
-                        var imgSrc = 'images/' + deployments[deployment].image;
-                        var imgAlt = deployments[deployment].image_alt;
-
-                        // Create the assistant message element
-                        var assistantMessageElement = $('<div class="message assistant-message" style="margin-bottom: 30px;"></div>');
-
-                        // Add the assistant's icon
-                        assistantMessageElement.prepend('<img src="' + imgSrc + '" alt="' + imgAlt + '" class="openai-icon">');
-
-                        assistantMessageElement.append('<span>' + gpt_response + '</span>');
-
-                        // Append the assistant message to the chat container
-                        chatContainer.append(assistantMessageElement);
-
-                        // Add the copy button
-                        addCopyButton(assistantMessageElement, raw_gpt_response);
+                    // Highlight syntax if the response includes code
+                    if (!image_gen_name) {
+                        hljs.highlightAll();
                     }
 
-                    // Scroll to the bottom of the chat container
-                    chatContainer.scrollTop(chatContainer.prop("scrollHeight"));
-
-                    // Re-run Highlight.js on the newly added content
-                    hljs.highlightAll();
-
+                    // Scroll to the bottom for non-image responses
+                    if (!image_gen_name) {
+                        debounceScroll();
+                    }
                 }
+            
             });
         }
     });
+
+    // Function to add the download button
+    function addDownloadButton(messageElement, fullImagePath) {
+        // Create the download button
+        var downloadButton = $(`
+            <button class="copy-chat-button" title="Download Full Image" aria-label="Download the full image">
+                <span style="font-size:12px;">Download Full Image</span>
+                <svg version="1.1" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                    <title>cloud-download</title>
+                    <path d="M12.75 20.379v-10.573h-1.5v10.573l-2.432-2.432-1.061 1.061 4.243 4.243 4.243-4.243-1.061-1.061-2.432 2.432z"></path>
+                    <path d="M18.75 7.555c0-3.722-3.028-6.75-6.75-6.75s-6.75 3.028-6.75 6.75c-2.485 0-4.5 2.015-4.5 4.5s2.015 4.5 4.5 4.5h3.75v-1.5h-3.75c-1.657 0-3-1.343-3-3s1.343-3 3-3v0h1.5v-1.5c0-2.899 2.351-5.25 5.25-5.25s5.25 2.351 5.25 5.25v0 1.5h1.5c1.657 0 3 1.343 3 3s-1.343 3-3 3v0h-3.75v1.5h3.75c2.485 0 4.5-2.015 4.5-4.5s-2.015-4.5-4.5-4.5v0z"></path>
+                </svg>
+            </button>
+        `);
+
+        // Append the button to the message element
+        messageElement.append(downloadButton);
+
+        // Set up the click handler to download the full-size image
+        downloadButton.on('click', function() {
+            var link = document.createElement('a');
+            link.href = fullImagePath;
+            link.download = 'GeneratedImage.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    }
 
     // Function to add the copy button
     function addCopyButton(messageElement, rawMessageContent) {
@@ -241,51 +300,90 @@ $(document).ready(function() {
             dataType: 'json',
             success: function(chatMessages) {
                 displayMessages(chatMessages);
-                scrollToBottom();
+                //scrollToBottom();
+                debounceScroll();
             }
         });
     }
 
     function displayMessages(chatMessages) {
-        chatMessages.forEach(function(message) {
+        chatMessages.forEach(function (message) {
+
+            //------------------------------------------------
+            // 1) USER PROMPT
+            //------------------------------------------------
             var sanitizedPrompt = sanitizeString(message.prompt).replace(/\n/g, '<br>');
-
-            // Format the reply to include code blocks
-            var sanitizedReply = formatCodeBlocks(message.reply);
-
             var userMessageElement = $('<div class="message user-message"></div>').html(sanitizedPrompt);
             userMessageElement.prepend('<img src="images/user.png" class="user-icon">');
             chatContainer.append(userMessageElement);
 
-            // Check if document_name and document_text are not empty
-            if (message.document_name && message.document_text) {
-                // Create an image element with the base64 data
-                var imgElement = $('<img>').attr('src', message.document_text);
+            //------------------------------------------------
+            // 2) DETERMINE IF WE HAVE AN ASSISTANT REPLY
+            //------------------------------------------------
+            var assistantMessageElement = null;
+            if (message.deployment && deployments[message.deployment]) {
+                assistantMessageElement = $('<div class="message assistant-message"></div>');
 
-                // Optionally, wrap the image in a div with a class for styling
-                var imageContainer = $('<div class="message image-message"></div>').append(imgElement);
-
-                // Append the image to the chat container
-                chatContainer.append(imageContainer);
-            }
-
-            if (deployments[message.deployment]) {
+                // Prepend the assistant's icon
                 var imgSrc = 'images/' + deployments[message.deployment].image;
                 var imgAlt = deployments[message.deployment].image_alt;
-
-                var assistantMessageElement = $('<div class="message assistant-message"></div>').html(sanitizedReply);
-
-                // Add the assistant's icon
                 assistantMessageElement.prepend('<img src="' + imgSrc + '" alt="' + imgAlt + '" class="openai-icon">');
 
-                // Append the assistant message to the chat container
                 chatContainer.append(assistantMessageElement);
 
-                // Add the copy button
-                addCopyButton(assistantMessageElement, message.reply);
+                // If there's a text reply, handle it
+                if (message.reply) {
+                    var sanitizedReply = formatCodeBlocks(message.reply);
+                    assistantMessageElement.append(sanitizedReply);
+                    addCopyButton(assistantMessageElement, message.reply);
+                }
             }
 
-            // Re-run Highlight.js on new content
+            //------------------------------------------------
+            // 3) HANDLE GENERATED IMAGE (IF PRESENT)
+            //------------------------------------------------
+            if (message.image_gen_name) {
+                var imgSrc = './image_gen/small/' + message.image_gen_name;
+                var imgElement = $('<img>')
+                    .attr('class', 'image-message')
+                    .attr('src', imgSrc)
+                    .attr('alt', 'Generated Image')
+                    .on('load', function () {
+                        //scrollToBottom(); // Scroll after the image loads
+                        debounceScroll();
+                    });
+
+                if (assistantMessageElement) {
+                    assistantMessageElement.append(imgElement);
+                    addDownloadButton(assistantMessageElement, './image_gen/fullsize/' + message.image_gen_name);
+                } else {
+                    var imageContainer = $('<div class="message assistant-message"></div>');
+                    imageContainer.append(imgElement);
+                    addDownloadButton(imageContainer, './image_gen/fullsize/' + message.image_gen_name);
+                    chatContainer.append(imageContainer);
+                }
+            }
+
+            //------------------------------------------------
+            // 4) HANDLE DOCUMENTS (USER OR ASSISTANT UPLOADED)
+            //------------------------------------------------
+            if (message.document_name && message.document_text && /^image\//.test(message.document_type)) {
+                var imgElement = $('<img>')
+                    .attr('class', 'image-message')
+                    .attr('src', message.document_text)
+                    .attr('alt', message.document_name || '');
+
+                if (message.document_source === 'assistant' && assistantMessageElement) {
+                    assistantMessageElement.append(imgElement);
+                    addDownloadButton(assistantMessageElement, message.document_text);
+                } else if (message.document_source === 'user') {
+                    userMessageElement.append(imgElement);
+                }
+            }
+
+            //------------------------------------------------
+            // 5) FINAL STEP: HIGHLIGHT SYNTAX IF ANY
+            //------------------------------------------------
             hljs.highlightAll();
         });
     }
