@@ -31,13 +31,12 @@ function waitForImagesToLoad(container, callback) {
 let scrollTimeout;
 function debounceScroll() {
     clearTimeout(scrollTimeout);
-    scrollTimeout = setTimeout(scrollToBottom, 100); // Adjust the delay as needed
+    scrollTimeout = setTimeout(scrollToBottom, 100); // Adjust as needed
 }
 
 function scrollToBottom() {
     chatContainer.scrollTop(chatContainer.prop("scrollHeight"));
 }
-
 
 $(document).ready(function() {
 
@@ -56,8 +55,6 @@ $(document).ready(function() {
 
     // Set focus on the message input
     userMessage.focus();
-
-    //console.log(chatId);
 
     // Initially load messages
     loadMessages();
@@ -78,7 +75,6 @@ $(document).ready(function() {
     // Event listener for form submission
     $('#messageForm').submit(function(e) {
         e.preventDefault();
-        //console.log("Form submission for chat ID " + chatId);
 
         var rawMessageContent = userMessage.val().trim();
         var sanitizedMessageContent = replaceNonAsciiCharacters(rawMessageContent);
@@ -95,44 +91,31 @@ $(document).ready(function() {
         // Display the user message (prompt) immediately after submission
         if (sanitizedMessageContent !== "") {
             var userMessageDecoded = base64DecodeUnicode(messageContent);
-            var sanitizedPrompt = sanitizeString(userMessageDecoded).replace(/\n/g, '<br>');
+            var sanitizedPrompt = formatCodeBlocks(userMessageDecoded);
 
             var userMessageElement = $('<div class="message user-message"></div>').html(sanitizedPrompt);
             userMessageElement.prepend('<img src="images/user.png" class="user-icon" alt="User icon">');
             chatContainer.append(userMessageElement);
 
-            console.log("THIS IS THE DEPLOYMENT --- "+deployment);
+            // Apply syntax highlighting to code within the user message
+            userMessageElement.find('pre code').each(function(i, block) {
+                hljs.highlightElement(block);
+            });
 
-            // Display the image only if document_type is an image MIME type
-            if (document_text && document_type) { // Ensure both document_text and document_type are present
-                // Check if document_type starts with 'image/'
-                if (typeof document_type === 'string' && document_type.toLowerCase().startsWith('image/')) {
-                    // Create an image element with the appropriate MIME type
-                    // Assuming document_text contains a Base64-encoded string without the data URL prefix
-                    //var imgSrc = `data:${document_type};base64,${document_text}`;
-                    var imgSrc = document_text;
-
-
-                    var imgElement = $('<img>')
-                        .attr('src', imgSrc)
-                        .attr('alt', 'Uploaded Image')
-                        .on('error', function() {
-                            console.error('Failed to load image.');
-                        });
-
-                    // Optionally, wrap the image in a div with a class for styling
-                    var imageContainer = $('<div class="message image-message"></div>').append(imgElement);
-
-                    // Append the image to the chat container
-                    chatContainer.append(imageContainer);
-                }
-                // If document_type is not an image MIME type, do not display anything
+            // Apply MathJax typesetting to the user message
+            if (window.MathJax) {
+                MathJax.typesetPromise([userMessageElement[0]]).then(function () {
+                    debounceScroll();
+                }).catch(function(err) {
+                    console.error("MathJax typeset failed: " + err.message);
+                    debounceScroll();
+                });
+            } else {
+                debounceScroll();
             }
 
             // Scroll to the bottom of the chat container
-            //chatContainer.scrollTop(chatContainer.prop("scrollHeight"));
-            //scrollToBottom();
-            debounceScroll();
+            // (debounceScroll is already called in the MathJax success/error handlers)
 
             // Clear the textarea and localStorage right after form submission
             userMessage.val("");
@@ -176,18 +159,16 @@ $(document).ready(function() {
 
                     var assistantMessageElement = $('<div class="message assistant-message" style="margin-bottom: 30px;"></div>');
 
-
                     // Prepend the assistant's icon
                     var imgSrc = 'images/' + deployments[deployment].image;
                     var imgAlt = deployments[deployment].image_alt;
                     assistantMessageElement.prepend('<img src="' + imgSrc + '" alt="' + imgAlt + '" class="openai-icon">');
 
+                    // If an image was generated
                     if (image_gen_name) {
-                        // Display the generated image
-                        var imgSrc = './image_gen/small/' + image_gen_name;
                         var imgElement = $('<img>')
                             .attr('class', 'image-message')
-                            .attr('src', imgSrc)
+                            .attr('src', './image_gen/small/' + image_gen_name)
                             .attr('alt', 'Generated Image')
                             .on('load', function () {
                                 // Scroll to the bottom only after the image is loaded
@@ -198,6 +179,8 @@ $(document).ready(function() {
 
                         // Add the download button for the full-size image
                         addDownloadButton(assistantMessageElement, './image_gen/fullsize/' + image_gen_name);
+
+                    // Otherwise, display text
                     } else if (gpt_response) {
                         // Display the text response
                         gpt_response = formatCodeBlocks(gpt_response);
@@ -208,16 +191,25 @@ $(document).ready(function() {
                     // Append the message to the chat container
                     chatContainer.append(assistantMessageElement);
 
+                    // Update chat titles
                     fetchAndUpdateChatTitles(search_term,0);
 
-                    // Highlight syntax if the response includes code
+                    // Syntax highlighting + MathJax
                     if (!image_gen_name) {
+                        // First highlight code
                         hljs.highlightAll();
-                    }
 
-                    // Scroll to the bottom for non-image responses
-                    if (!image_gen_name) {
-                        debounceScroll();
+                        // Then typeset the math in the newly added message
+                        if (window.MathJax) {
+                            MathJax.typesetPromise([assistantMessageElement[0]]).then(function () {
+                                debounceScroll();
+                            }).catch(function(err) {
+                                console.error("MathJax typeset failed: " + err.message);
+                                debounceScroll();
+                            });
+                        } else {
+                            debounceScroll();
+                        }
                     }
                 }
             
@@ -253,7 +245,7 @@ $(document).ready(function() {
         });
     }
 
-    // Function to add the copy button
+    // Copy button for text
     function addCopyButton(messageElement, rawMessageContent) {
         // Create the copy button without the onclick attribute
         var copyButton = $(`
@@ -277,8 +269,7 @@ $(document).ready(function() {
             navigator.clipboard.writeText(rawMessageContent).then(function() {
                 // Create a subtle popup message
                 var popup = $('<span class="copied-chat-popup show">Copied!</span>');
-                
-                // Style the popup (adjust positioning as needed)
+
                 popup.css({
                     position: 'absolute',
                     top: copyButton.position().top + 4, // Adjust this value as needed
@@ -298,7 +289,7 @@ $(document).ready(function() {
         });
     }
 
-
+    // Load old messages
     function loadMessages() {
         $.ajax({
             url: "get_messages.php",
@@ -312,19 +303,22 @@ $(document).ready(function() {
         });
     }
 
+    // Show older chat messages
     function displayMessages(chatMessages) {
         chatMessages.forEach(function (message) {
 
             //------------------------------------------------
             // 1) USER PROMPT
             //------------------------------------------------
-            var sanitizedPrompt = sanitizeString(message.prompt).replace(/\n/g, '<br>');
+            // Apply formatCodeBlocks to the user's prompt
+            var sanitizedPrompt = formatCodeBlocks(message.prompt);
             var userMessageElement = $('<div class="message user-message"></div>').html(sanitizedPrompt);
             userMessageElement.prepend('<img src="images/user.png" class="user-icon">');
             chatContainer.append(userMessageElement);
 
+
             //------------------------------------------------
-            // 2) DETERMINE IF WE HAVE AN ASSISTANT REPLY
+            // 2) ASSISTANT REPLY
             //------------------------------------------------
             var assistantMessageElement = null;
             if (message.deployment && deployments[message.deployment]) {
@@ -349,10 +343,9 @@ $(document).ready(function() {
             // 3) HANDLE GENERATED IMAGE (IF PRESENT)
             //------------------------------------------------
             if (message.image_gen_name) {
-                var imgSrc = './image_gen/small/' + message.image_gen_name;
-                var imgElement = $('<img>')
+                var genImg = $('<img>')
                     .attr('class', 'image-message')
-                    .attr('src', imgSrc)
+                    .attr('src', './image_gen/small/' + message.image_gen_name)
                     .attr('alt', 'Generated Image')
                     .on('load', function () {
                         //scrollToBottom(); // Scroll after the image loads
@@ -360,45 +353,69 @@ $(document).ready(function() {
                     });
 
                 if (assistantMessageElement) {
-                    assistantMessageElement.append(imgElement);
+                    assistantMessageElement.append(genImg);
                     addDownloadButton(assistantMessageElement, './image_gen/fullsize/' + message.image_gen_name);
                 } else {
                     var imageContainer = $('<div class="message assistant-message"></div>');
-                    imageContainer.append(imgElement);
+                    imageContainer.append(genImg);
                     addDownloadButton(imageContainer, './image_gen/fullsize/' + message.image_gen_name);
                     chatContainer.append(imageContainer);
                 }
             }
 
             //------------------------------------------------
-            // 4) HANDLE DOCUMENTS (USER OR ASSISTANT UPLOADED)
+            // 4) DOCUMENTS (USER OR ASSISTANT UPLOADED)
             //------------------------------------------------
             if (message.document_name && message.document_text && /^image\//.test(message.document_type)) {
-                var imgElement = $('<img>')
+                var docImg = $('<img>')
                     .attr('class', 'image-message')
                     .attr('src', message.document_text)
                     .attr('alt', message.document_name || '');
 
                 if (message.document_source === 'assistant' && assistantMessageElement) {
-                    assistantMessageElement.append(imgElement);
+                    assistantMessageElement.append(docImg);
                     addDownloadButton(assistantMessageElement, message.document_text);
                 } else if (message.document_source === 'user') {
-                    userMessageElement.append(imgElement);
+                    userMessageElement.append(docImg);
                 }
             }
-
-            //------------------------------------------------
-            // 5) FINAL STEP: HIGHLIGHT SYNTAX IF ANY
-            //------------------------------------------------
-            hljs.highlightAll();
         });
+
+        // After appending all messages, do syntax highlighting and MathJax
+        hljs.highlightAll();
+        if (window.MathJax) {
+            MathJax.typesetPromise([chatContainer[0]]).then(function() {
+                debounceScroll();
+            }).catch(function(err) {
+                console.error("MathJax typeset failed: " + err.message);
+                debounceScroll();
+            });
+        } else {
+            debounceScroll();
+        }
     }
 
-    // Function to identify and format code blocks
+    // Identify and format code blocks with triple backticks
     function formatCodeBlocks(reply) {
-        // Array to hold code blocks temporarily
-        let codeBlocks = [];
 
+        // 2) Hacky filter to replace `\left[ ... \right]` with `\left. ... \right|`
+        //    so that MathJax doesn’t choke on sub/superscripts after square brackets:
+        
+        reply = reply.replace(/\\left\s*\[/g, '\\left.');
+        reply = reply.replace(/\\right\s*\]/g, '\\right|');
+        reply = reply.replace(/E\[(.*?)\]/g, 'E($1)');
+
+        // Ensure LaTeX is preserved before other processing
+        reply = reply.replace(/\\\[([^\]]+)\\\]/g, function(match, latex) {
+            return `<div class="math-block">$$ ${latex} $$</div>`;
+        });
+
+        reply = reply.replace(/\\\(([^)]+)\\\)/g, function(match, latex) {
+            return `<span class="math-inline">$ ${latex} $</span>`;
+        });
+
+        // Rest of your existing formatCodeBlocks logic
+        let codeBlocks = [];
         // Extract and replace code blocks with placeholders
         reply = reply.replace(/```(\w*)\n([\s\S]*?)```/g, function(match, lang, code) {
             // If language is specified, use it; otherwise default to plaintext
@@ -424,10 +441,15 @@ $(document).ready(function() {
             return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
         });
 
-        // Use marked.parse to handle markdown parsing on the rest of the content
-        reply = marked.parse(reply);
+        // Convert to HTML, but carefully
+        reply = marked.parse(reply, {
+            // Prevent escaped characters from being converted
+            sanitize: false,
+            // Preserve HTML-like syntax
+            breaks: false
+        });
 
-        // Replace placeholders with the original code block HTML
+        // Replace placeholders with actual code block HTML
         codeBlocks.forEach((block, index) => {
             reply = reply.replace(`<strong>CODE_BLOCK_${index}</strong>`, block);
         });
@@ -436,7 +458,3 @@ $(document).ready(function() {
     }
 
 });
-
-
-
-
