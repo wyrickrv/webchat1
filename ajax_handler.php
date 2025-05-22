@@ -3,7 +3,6 @@
 require_once 'lib.required.php';
 require_once 'db.php';
 
-#define('HARDCODED_DEPLOYMENT','azure-gpt35');
 define('HARDCODED_DEPLOYMENT','azure-gpt3-16k');
 
 $user = $_SESSION['user_data']['userid'] ?? null; // Assuming you have a session variable for username
@@ -13,25 +12,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Get the user's message from the POST data
     $user_message = base64_decode($_POST['message']); // Decode from Base64
-    //$user_message = filter_input(INPUT_POST, 'message', FILTER_SANITIZE_STRING);
 
-    $deployment = isset($_POST['deployment']) ? $_POST['deployment'] : 'default_deployment'; // Provide a default if needed
-
+    // Provide a default if needed
+    $deployment = isset($_POST['deployment']) ? $_POST['deployment'] : 'default_deployment'; 
 
     // Retrieve the chat ID from the POST data
     $chat_id = filter_input(INPUT_POST, 'chat_id', FILTER_SANITIZE_STRING);
 
     // Initialize variables for new chat creation
     $new_chat_id = '';
-    $document_name = $_SESSION['document_name'] ?? ''; // Use null coalescing operator for default values
-    $document_text = $_SESSION['document_text'] ?? '';
 
     // Create a new chat session if no chat ID is provided
     if (empty($chat_id)) {
         $need_title = true;
 
         // The $new_chat_id will tell Javascript to reload the page to show the new title. 
-        $id = $new_chat_id = create_chat($user, 'New auto-generated Chat', '', $_SESSION['deployment'], $document_name, $document_text);
+        $id = $new_chat_id = create_chat($user, 'New auto-generated Chat', '', $_SESSION['deployment']);
     } else {
         $need_title = (get_new_title_status($user, $chat_id)) ? true : false;
   
@@ -92,6 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
  * @return string|null The generated chat title or null if an error occurs.
  */
 function generate_chat_title($user_message, $gpt_response, $config_key) {
+    global $chat_id;
     // Prepare the message for generating a chat title
     $msg = [
         ["role" => "system", "content" => "You are an AI assistant that creates concise, friently, title summaries for chats. Use no more than 5 words. Never include code or punctuation. Never include mathematical notation. Only use words and if needed, numbers."],
@@ -99,11 +96,11 @@ function generate_chat_title($user_message, $gpt_response, $config_key) {
         ["role" => "assistant", "content" => substringWords($gpt_response,300)],
         ["role" => "user", "content" => "Pleae create a concise, friently, title, summarizing this chat. Use no more than 5 words. Never include code or punctuation. Never include mathematical notation. Only use words and if needed, numbers."],
     ];
-    $active_config = load_configuration($config_key);
-    #die(print_r($msg,1));
+    $active_config = load_configuration($config_key, true);
+    #die(print_r($active_config,1));
 
     // Call Azure API to generate the chat title
-    $title_response = call_azure_api($active_config, $msg);
+    $title_response = call_azure_api($active_config, $chat_id, $msg);
     $title_response_data = json_decode($title_response, true);
     #die(print_r($title_response_data,1));
 

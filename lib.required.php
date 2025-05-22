@@ -1,17 +1,21 @@
 <?php
 
-ini_set('session.cookie_lifetime', 0); // Expires when browser is closed
+require_once __DIR__ . '/session_init.php';
+require_once 'get_config.php'; // Determine the environment dynamically
+#echo '<pre>'.print_r($config,1).'</pre>';
 
 // lib.required.php
 require_once 'db.php';
 
-// Determine the environment dynamically
-require_once 'get_config.php';
-// echo '<pre>'.print_r($config,1).'</pre>';
+$pdo = get_connection();
 
-// Start the session, if not already started
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
+
+// Before proceeding, check if the session has the required user data.
+// If not, let’s give it a chance to appear.
+if (!waitForUserSession()) {
+    // If after waiting the session is still missing the user id, load the splash page.
+    require_once 'splash.php';
+    exit;
 }
 
 // Handle the splash screen
@@ -38,13 +42,25 @@ $user = (empty($_SESSION['user_data']['userid'])) ? '' : $_SESSION['user_data'][
 
 $application_path = $config['app']['application_path'];
 
+// Confirm authentication, redirect if false
+if (isAuthenticated()) {
+    if (empty($_SESSION['LAST_REGEN']) || (time() - $_SESSION['LAST_REGEN'] > 900)) {
+        session_regenerate_id(true);
+        $_SESSION['LAST_REGEN'] = time();
+    }
+
+} else {
+    header('Location: auth_redirect.php');
+    exit;
+}
+
 // Verify that there is a chat with this id for this user
 // If a 'chat_id' parameter was passed, store its value as a string in the session variable 'chat_id'
 $chat_id = filter_input(INPUT_GET, 'chat_id', FILTER_SANITIZE_STRING);
 
 if (!verify_user_chat($user, $chat_id)) {
     echo " -- " . htmlspecialchars($user) . "<br>\n";
-    die("Error: there is no chat record for the specified user and chat id. If you need assistance, please contact " . htmlspecialchars($email_help));
+    die("Error: there is no chat record for the specified user and chat id. If you need assistance, please contact " . htmlspecialchars($config['app']['emailhelp']));
 }
 
 // Parse models from configuration
@@ -60,7 +76,7 @@ foreach ($models_a as $m) {
 // Define temperature options
 $temperatures = [];
 $i = 0;
-while ($i < 1) {
+while ($i < 2.1) {
     $temperatures[] = round($i, 1);
     $i += 0.1;
 }
@@ -70,6 +86,7 @@ if (empty($_GET['chat_id'])) $_GET['chat_id'] = '';
 
 // Handle model selection
 if (isset($_POST['model']) && array_key_exists($_POST['model'], $models)) {
+    #print_r($_POST);
     $deployment = $_SESSION['deployment'] = $_POST['model'];
     if (!empty($_GET['chat_id'])) update_deployment($user, $chat_id, $deployment);
 }
@@ -77,27 +94,22 @@ if (isset($_POST['model']) && array_key_exists($_POST['model'], $models)) {
 // Retrieve all chats for the user
 $all_chats = get_all_chats($user);
 if (!empty($chat_id) && !empty($all_chats[$chat_id])) {
+    #echo "2 This is the deployment: {$deployment}<br>\n";
     $deployment = $_SESSION['deployment'] = $all_chats[$chat_id]['deployment'];  // Currently active chat
-
-    $_SESSION['temperature'] = $all_chats[$chat_id]['temperature'];
-    if (!empty($all_chats[$chat_id]['document_name'])) {
-        $doc = get_uploaded_image_status($chat_id);
-        $_SESSION['document_name'] = $doc['document_name'];
-        $_SESSION['document_type'] = $doc['document_type'];
-        $_SESSION['document_text'] = $doc['document_text'];
-    } else {
-        $_SESSION['document_name'] = '';
-        $_SESSION['document_type'] = '';
-        $_SESSION['document_text'] = '';
-    }
+    #echo "3 This is the deployment: {$deployment}<br>\n";
+    $_SESSION['temperature'] = (empty($all_chats[$chat_id]['temperature'])) ? '0.7' : $all_chats[$chat_id]['temperature'];
 }
 
 // Set default deployment if not already set
 if (empty($_SESSION['deployment'])) {
     $deployment = $_SESSION['deployment'] = $config['azure']['default'];
+    #echo "4 This is the deployment: {$deployment}<br>\n";
 } else {
     $deployment = $_SESSION['deployment'];
+    #echo "5 This is the deployment: {$deployment}<br>\n";
 }
+#echo "1 This is the deployment: {$deployment}<br>\n";
+#echo '<pre>'.print_r($config[$deployment],1).'</pre>';
 
 // Handle temperature selection
 if (isset($_POST['temperature'])) {
@@ -111,17 +123,23 @@ if (!isset($_SESSION['temperature']) || (float)$_SESSION['temperature'] < 0 || (
     $_SESSION['temperature'] = 0.7;
 }
 
-// Confirm authentication, redirect if false
-if (isAuthenticated()) {
-    session_regenerate_id(true);
-} else {
-    header('Location: auth_redirect.php');
-    exit;
-}
+
 
 // Uncomment for debugging
 // echo "<pre>". print_r($_SESSION,1) ."</pre>";
 // echo "<pre>". print_r($_SERVER,1) ."</pre>";
+
+// Helper function to wait for critical session data
+function waitForUserSession($maxAttempts = 5, $delayMicroseconds = 500000) {
+    $attempt = 0;
+    // Check if the user_data userid is set; if not, wait and retry
+    while ($attempt < $maxAttempts && empty($_SESSION['user_data']['userid'])) {
+        usleep($delayMicroseconds);
+        $attempt++;
+        $delayMicroseconds += 500000;
+    }
+    return !empty($_SESSION['user_data']['userid']);
+}
 
 /**
  * Retrieves the GPT response by orchestrating the API call and processing the response.
@@ -147,7 +165,7 @@ function get_gpt_response($message, $chat_id, $user, $deployment) {
     if ($active_config['host'] == "Mocha") {
         $response = call_mocha_api($active_config['base_url'], $msg);
     } else {
-        $response = call_azure_api($active_config, $msg);
+        $response = call_azure_api($active_config, $chat_id, $msg);
     }
     #echo "<pre>Step get_gpt_response()\n".print_r($response,1)."</pre>"; die();
 
@@ -160,8 +178,13 @@ function get_gpt_response($message, $chat_id, $user, $deployment) {
  * @param string $deployment The deployment identifier.
  * @return array|null The configuration array or null if not found.
  */
-function load_configuration($deployment) {
+function load_configuration($deployment, $hardcoded = false) {
     global $config;
+
+    if ($hardcoded) {
+        $config[$deployment]['enabled'] = true;
+    }
+
     // Check if the deployment is enabled
     if (!isset($config[$deployment]['enabled']) || $config[$deployment]['enabled'] == false || $config[$deployment]['enabled'] === 'false') {
         // Reassign deployment to default if not enabled
@@ -195,8 +218,8 @@ function load_configuration($deployment) {
  */
 function get_chat_thread($message, $chat_id, $user, $active_config) {
 
-    if ($active_config['host'] === 'Dall-e') {
-        return array('prompt'=>$message); // Handle DALL-E Image Generation Requests
+    if ($active_config['host'] === 'dall-e') {
+        return array('prompt'=>$message); // Handle dall-E Image Generation Requests
         
     } else {
         // Handle Chat Completion Requests
@@ -236,11 +259,11 @@ function call_mocha_api($base_url, $msg) {
  * @param mixed $msg The message payload.
  * @return string The API response.
  */
-function call_azure_api($active_config, $msg) {
-    $is_dalle = ($active_config['host'] === 'Dall-e');
+function call_azure_api($active_config, $chat_id, $msg) {
+    $is_dalle = ($active_config['host'] === 'dall-e');
 
     if ($is_dalle) {
-        // DALL-E Image Generation Endpoint
+        // dall-E Image Generation Endpoint
         $url = $active_config['base_url'] . "/openai/deployments/" . $active_config['deployment_name'] . "/images/generations?api-version=" . $active_config['api_version'];
         
         $payload = [
@@ -253,13 +276,14 @@ function call_azure_api($active_config, $msg) {
     } else {
         // Chat Completion Endpoint
         $url = $active_config['base_url'] . "/openai/deployments/" . $active_config['deployment_name'] . "/chat/completions?api-version=" . $active_config['api_version'];
+        $top_p = (preg_match('/o1|o3/',$_SESSION['deployment'])) ? 1 : 0.95;
         
         $payload = [
             'messages' => $msg,
             "temperature" => (float)$_SESSION['temperature'],
             "frequency_penalty" => 0,
             "presence_penalty" => 0,
-            "top_p" => 1
+            "top_p" => $top_p
         ];
         if (!empty($active_config['max_tokens'])) {
             $payload['max_tokens'] = $active_config['max_tokens'];
@@ -276,7 +300,7 @@ function call_azure_api($active_config, $msg) {
         'Content-Type: application/json',
         'api-key: ' . $active_config['api_key']
     ];
-    $response = execute_api_call($url, $payload, $headers);
+    $response = execute_api_call($url, $payload, $headers, $chat_id);
     return $response;
 }
 
@@ -303,7 +327,7 @@ function process_api_response($response, $active_config, $chat_id, $message, $ms
         ];
     }
 
-    if ($active_config['host'] === 'Dall-e') {
+    if ($active_config['host'] === 'dall-e') {
         $image_url = $response_data['data'][0]['url'] ?? null;
 
         if ($image_url) {
@@ -311,7 +335,7 @@ function process_api_response($response, $active_config, $chat_id, $message, $ms
             $unique_dir = $matches[1] ?? uniqid();
             $image_gen_name = $chat_id . '-' . $unique_dir . '.png';
 
-            $image_gen_dir = __DIR__ . '/image_gen';
+            $image_gen_dir = dirname(__DIR__) . '/image_gen';
             $fullsize_dir = $image_gen_dir . '/fullsize';
             $small_dir = $image_gen_dir . '/small';
 
@@ -369,7 +393,7 @@ function handle_chat_request($message, $chat_id, $user, $active_config) {
     $system_message = build_system_message($active_config);
     
     // Check and handle any document content first
-    $document_messages = handle_document_content($message, $active_config);
+    $document_messages = handle_document_content($chat_id, $user, $message, $active_config);
     
     if ($document_messages !== null) {
         // If a document is present, use document messages exclusively
@@ -396,14 +420,22 @@ function handle_chat_request($message, $chat_id, $user, $active_config) {
  * @param array $headers The HTTP headers.
  * @return string The API response.
  */
-function execute_api_call($url, $payload, $headers) {
-    // Uncomment for debugging
+function execute_api_call($url, $payload, $headers, $chat_id = '') {
+    // Logging for debugging
     /*
-    print($url."\n");
-    print_r($headers);
-    print_r($payload);
-    die();
+    $date = new DateTime();
+    $timezone = new DateTimeZone('America/New_York');
+    $date->setTimezone($timezone);
+    $log = 
+    $date->format('Y-m-d H:i:s')."\n". 
+    "Chat ID: ".$chat_id."\n".
+    "URL: ".$url."\n".
+    "Headers: ".$headers[1]."\n".
+    "Prompt: ".substr($payload['messages'][count($payload['messages'])-1]['content'],0,100)."\n\n";
+    #die($log);
+    file_put_contents("mylog.log", $log, FILE_APPEND);
     */
+    
     $_SESSION['api_endpoint'] = $url;
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
@@ -414,7 +446,7 @@ function execute_api_call($url, $payload, $headers) {
 
     $response = curl_exec($ch);
     // Uncomment for debugging
-    // print($response); die();
+    #print($response); die();
 
     if (curl_errno($ch)) {
         error_log('Curl error: ' . curl_error($ch));
@@ -501,40 +533,62 @@ function retrieve_context_messages($chat_id, $user, $active_config, $message) {
 /**
  * Processes document content from the session.
  *
+ * Retrieves all documents related to the given chat, constructs
+ * an LLM-ready messages array, and appends the user prompt at the end.
+ *
+ * @param string $chat_id The unique chat ID.
+ * @param string $user The user ID.
  * @param string $message The current user message.
  * @param array $active_config The active deployment configuration.
- * @return array|null The messages array if document exists, otherwise null.
+ * @return array|null The messages array if documents exist, otherwise null.
  */
-function handle_document_content($message, $active_config) {
-    if (!empty($_SESSION['document_text'])) {
-        if (strpos($_SESSION['document_type'], 'image/') === 0) {
-            // Handle image content (use image_url field with base64 encoded image)
+function handle_document_content($chat_id, $user, $message, $active_config) {
+    $docs = get_chat_documents($user, $chat_id);
+
+    if (!empty($docs)) {
+        $messages = [];
+
+        foreach ($docs as $i => $doc) {
+            // Add document metadata
             $messages[] = [
                 "role" => "user",
-                "content" => "You are a helpful assistant to analyze images."
-            ];
-            $messages[] = [
-                "role" => "user",
-                "content" => [
-                    ["type" => "text", "text" => $message],
-                    ["type" => "image_url", "image_url" => ["url" => $_SESSION['document_text']]]
-                ]
+                "content" => "This is document #" . ($i + 1) . ". Its filename is: " . $doc['document_name']
             ];
 
-        } else {
+            // Handle image documents separately
+            if (strpos($doc['document_type'], 'image/') === 0) {
+                $messages[] = [
+                    "role" => "user",
+                    "content" => [
+                        ["type" => "text", "text" => $message],
+                        ["type" => "image_url", "image_url" => ["url" => $doc['document_content']]]
+                    ]
+                ];
+            } else {
+                // Append text document content
+                $messages[] = [
+                    "role" => "user",
+                    "content" => $doc['document_content']
+                ];
+            }
+        }
 
-            $messages[] = ['role' => 'user','content' => $_SESSION['document_text']];
-            $messages[] = ['role' => 'user','content' => $message];
+        // Append the original user message after listing all documents
+        $messages[] = [
+            "role" => "user",
+            "content" => $message
+        ];
 
-        }                                                                                                                                                                      
         return $messages;
-    }   
+    }
+
+    return null; // Explicitly return null if no documents exist
 }
 
 /**
  * Fetches a remote image, saves it temporarily, and returns a base64 data URL.
  *
- * @param string $remote_url The remote image URL from DALL-E.
+ * @param string $remote_url The remote image URL from dall-E.
  * @return array|null Returns ['data_url' => ..., 'mime_type' => ..., 'filename' => ...]
  *                    or null on failure.
  */
@@ -715,11 +769,6 @@ function isAuthenticated() {
  */
 function logout() {
 
-    // Uncomment to ensure the session is started
-    // if (session_status() == PHP_SESSION_NONE) {
-    //     session_start();
-    // }
-
     // Unset all session variables
     $_SESSION = array();
 
@@ -777,5 +826,21 @@ function substringWords($text, $numWords) {
     $subString = implode(' ', $selectedWords);
     
     return $subString;
+}
+
+function get_tool_tips() {
+    global $config;
+    $output = "<ul>\n";
+    $deployments = explode(',',$config['azure']['deployments']);
+    foreach($deployments as $pair) {
+        $a = explode(':',$pair);
+        $deployment = $config[$a[0]];
+        if ($deployment['enabled'] > 0) {
+            #echo '<pre>'.print_r($config[$a[0]],1).'</pre>';
+            $output .= '<li><strong>'.$a[1].'</strong>: '.$deployment['tooltip']."</li>\n";
+        }
+    }
+    $output .= "</ul>\n";
+    return $output;
 }
 

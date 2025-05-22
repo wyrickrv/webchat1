@@ -3,7 +3,6 @@
 #die("<h2>NHLBI Chat is down for a very brief maintenance.</h2>");
 // Include the library functions and the database connection
 require_once 'lib.required.php'; 
-require_once 'db.php'; 
 # phpinfo();
 
 $username = $_SESSION['user_data']['name'];
@@ -61,38 +60,19 @@ foreach(array_keys($models) as $m) {
         var sessionTimeout = <?php echo $sessionTimeout * 1000; ?>; // Convert seconds to milliseconds
         var deployment = "<?php echo $deployment; ?>";
         var host = "<?php echo $config[$deployment]['host'] ; ?>";
+        var handles_images = "<?php echo $config[$deployment]['handles_images'] ; ?>";
+        var handles_documents = "<?php echo $config[$deployment]['handles_documents'] ; ?>";
         var temperature = "<?php echo $_SESSION['temperature']; ?>";
         var chatContainer;
+        var currentChat;
 
         var document_name = '';
         var document_type = '';
-        var document_text = '';
         var document_source = '';
-        <?php
+        var documentsLength = 0;
 
-        if (!(
-            stristr($deployment, 'dall-e') ||
-            (
-                stristr($deployment, 'o1') &&
-                !empty($_SESSION['document_type']) && 
-                strpos($_SESSION['document_type'], 'image/') === 0
-            )
-        )) {
-            if (!empty($_SESSION['document_name'])) {
-                echo "document_name = " . json_encode($_SESSION['document_name']) . ";";
-            }
-            if (!empty($_SESSION['document_type'])) {
-                echo "document_type = " . json_encode($_SESSION['document_type']) . ";";
-            }
-            if (!empty($_SESSION['document_text'])) {
-                echo "document_text = " . json_encode($_SESSION['document_text']) . ";";
-            }
-            if (!empty($_SESSION['document_source'])) {
-                echo "document_source = " . json_encode($_SESSION['document_source']) . ";";
-            }
-        }
-
-        ?>
+        var chatId = <?php echo json_encode(isset($_GET['chat_id']) ? $_GET['chat_id'] : null); ?>;
+        //console.log("THIS IS THE CHAT ID IN INDEX.PHP: "+chatId)
 
         var search_term = "<?php echo isset($_SESSION['search_term']) ? htmlspecialchars($_SESSION['search_term'], ENT_QUOTES, 'UTF-8') : ''; ?>";
 
@@ -192,38 +172,20 @@ foreach(array_keys($models) as $m) {
                 <!-- Adding the feedback link -->
                 <!-- <p class="aboutChat"><a title="About text" href="javascript:void(0);" onclick="showAboutUs()">About NHLBI Chat</a></p> -->
                 <p class=""><a title="About text" href="javascript:void(0);" onclick="showAboutUs()">About NHLBI Chat</a></p>
-                <p class="feedback"><!--<?php echo $config['app']['feedback_text']; ?>
-                </br>
-                </br>-->
-                <a title="Open a link to the Teams interface" href="<?php echo $config['app']['teams_link']; ?>" target="_blank">Connect in Teams</a></p>
-                <p class=""><a title="Open a new window to submit feedback" href="<?php echo $config['app']['feedback_link']; ?>" target="_blank">Submit Feedback</a></p>
-                <p class=""><a title="Open the training video in a new window" href="<?php echo $config['app']['video_link']; ?>" target="_blank">Training Video</a></p>
+                <!--<p class=""><a title="About models" href="javascript:void(0);" onclick="showAboutModels()">Model Descriptions</a></p>-->
                 <p><a title="Open the disclosure information in a new window" href="<?php echo $config['app']['disclosure_link']; ?>" target="_Blank">Vulnerability Disclosure</a></p>
             </div><!-- End Menu bottom content -->
         </nav> <!-- End the menu column -->
 
         <main id="main-content" class="col-12 col-md-10 d-flex align-items-start flex-column main-content">
 
-            <div class="aboutChatWindow">
-                <button class="closeAbout" onclick="closeAboutUs()" aria-label="Close About Us"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" width="20px" height="20px"><path d="M 25 2 C 12.309534 2 2 12.309534 2 25 C 2 37.690466 12.309534 48 25 48 C 37.690466 48 48 37.690466 48 25 C 48 12.309534 37.690466 2 25 2 z M 25 4 C 36.609534 4 46 13.390466 46 25 C 46 36.609534 36.609534 46 25 46 C 13.390466 46 4 36.609534 4 25 C 4 13.390466 13.390466 4 25 4 z M 32.990234 15.986328 A 1.0001 1.0001 0 0 0 32.292969 16.292969 L 25 23.585938 L 17.707031 16.292969 A 1.0001 1.0001 0 0 0 16.990234 15.990234 A 1.0001 1.0001 0 0 0 16.292969 17.707031 L 23.585938 25 L 16.292969 32.292969 A 1.0001 1.0001 0 1 0 17.707031 33.707031 L 25 26.414062 L 32.292969 33.707031 A 1.0001 1.0001 0 1 0 33.707031 32.292969 L 26.414062 25 L 33.707031 17.707031 A 1.0001 1.0001 0 0 0 32.990234 15.986328 z" fill="#222222"/></svg></button>
-                <h4>About NHLBI Chat</h4>
-
-                    <p class="newchat" style="text-align: center; margin-top: 20px;">
-                        <?php echo $config['app']['help_text1']; ?>
-                        <span style="display: flex; justify-content: space-between; width: 90%; margin: 20px auto;">
-                            <a title="Open a link to the Teams interface" href="<?php echo $config['app']['teams_link']; ?>" target="_blank">Connect in Teams</a>
-                            <a title="Open a link to the NHLBI Intranet interface" href="<?php echo $config['app']['intranet_link']; ?>" target="_blank">Overview and Instructions</a>
-                            <a title="Open the training video in a new window" href="<?php echo $config['app']['video_link']; ?>" target="_blank">Training Video</a>
-                            <a title="Open a new window to submit feedback" href="<?php echo $config['app']['feedback_link']; ?>" target="_blank">Submit Feedback</a>
-                        </span>
-                    </p>
-
-
-                <?php echo isset($config['app']['disclaimer_text']) ? $config['app']['disclaimer_text'] : ''; ?>                                                                                        
-
-            </div>
+            <?php require_once 'staticpages/disclaimer_popup.php'; ?>                                                                                        
+            <?php require_once 'staticpages/model_text.php'; ?> 
+            <?php require_once 'staticpages/document_uploader.php'; ?> 
 
             <h1 id="print-title"></h1>
+
+
 
             <!-- Main content here -->
             <div id="messageList" class="p-2 maincolumn maincol-top chat-container" aria-live="polite"><!-- Flex item chat body top -->
@@ -232,40 +194,42 @@ foreach(array_keys($models) as $m) {
 
             <div class="maincolumn maincol-bottom"><!-- Chat body bottom -->
 
-                <!-- Original messageForm -->
                 <form id="messageForm" class="chat-input-form">
-                    <div class="input-container">
-                        <textarea class="form-control" id="userMessage" aria-label="Main chat textarea" placeholder="Type your message..." rows="4" required></textarea>
-                        <button type="submit" class="submit-button" aria-label="Send message">
-                            <!-- Icon (paper plane) -->
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="send-icon">
-                                <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-                            </svg>
-                        </button>
-                    </div>
+                  <div class="input-container">
+                    <textarea class="form-control" id="userMessage" aria-label="Main chat textarea" 
+                              placeholder="Type your message..." rows="4" required></textarea>
+                    
+<?php if ($config[$deployment]['host'] !== 'dall-e') { ?>
+                    <!-- Paperclip upload button (triggers the upload modal) -->
+                    <button type="button" class="upload-button" 
+                            onclick="openUploadModal()" 
+                            aria-label="Upload Document" 
+                            style="background: none; border: none; cursor: pointer; margin-left: 30px;">
+                      <img src="images/paperclip.svg" 
+                           alt="Upload Document" 
+                           title="Document types accepted: PDF, Word, PPT, text, markdown, images, etc." 
+                           style="height: 24px; transform: rotate(45deg);">
+                    </button>
+<?php } ?>
+
+                    <!-- Send button -->
+                    <button type="submit" class="submit-button" aria-label="Send message">
+                      <!-- Icon (paper plane) -->
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="send-icon">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                      </svg>
+                    </button>
+                  </div>
                 </form>
 
 
-                <form onsubmit="saveMessage()" id="model_select" action="" method="post" style="display: inline-block; margin-left: 20px; margin-right: 10px; margin-top: 15px; border-top: 1px solid white; ">
-                    <label for="model" title="">Select Model</label>: 
-                    <select title="Choose between available chat models" name="model"  onchange="updatePlaceholder(); document.getElementById('model_select').submit();">
+                <button style="display: inline-block; margin-top:8px;" title="Select models from a list" aria-label="About models button" onclick="showAboutModels()" id="printButton">Model: <?php echo $models[$_SESSION['deployment']]['label']; ?></button>
+                <!-- <span style="display: inline-block; margin-top:8px;"><a title="About models" href="javascript:void(0);" onclick="showAboutModels()">Select Model</a> -->
+                <!--current model: <?php echo $models[$_SESSION['deployment']]['label']; ?></span> -->
 
-                        <?php
-                        foreach ($models as $m => $modelconfig) {
-                            #echo '<pre>'.print_r($modelconfig,1).'</pre>';
-                            if (empty($modelconfig['enabled'])) continue;
-                            $label = $modelconfig['label'];
-                            $tooltip = $modelconfig['tooltip'];
-                            $sel = ($m == $_SESSION['deployment']) ? 'selected="selected"' : '';
-                            echo '<option value="'.$m.'"'.$sel.' title="'.$tooltip.'">'.$label.'</option>'."\n";
-                        }
-                        ?>
-                    </select>
-                </form>
+<?php if ($config[$deployment]['handles_temperature']) { ?>
 
-<?php if ($config[$deployment]['host'] !== 'Dall-e' && $deployment !== 'azure-o1-preview') { ?>
-
-                <form onsubmit="saveMessage()" id="temperature_select" action="" method="post" style="display: inline-block; margin-left: 20px; margin-right: 10px; margin-top: 15px; border-top: 1px solid white; ">
+                <form onsubmit="saveMessage()" id="temperature_select" action="" method="post" style="display: inline-block; margin-left: 20px; margin-right: 10px; margin-top: 8px; border-top: 1px solid white; ">
                     <label for="temperature">Temperature</label>: <select title="Choose a temperature setting between 0 and 2. A temperature of 0 means the responses will be very deterministic (meaning you almost always get the same response to a given prompt). A temperature of 2 means the responses can vary substantially." name="temperature" onchange="document.getElementById('temperature_select').submit();">
                         <?php
                         foreach ($temperatures as $t) {
@@ -277,32 +241,13 @@ foreach(array_keys($models) as $m) {
                 </form>
 
 <?php } ?>
-<?php if ($config[$deployment]['host'] !== 'Dall-e') { ?>
+<?php if ($config[$deployment]['host'] !== 'dall-e') { ?>
 
                 <!-- File Upload Form -->
                 <form onSubmit="saveMessage();" method="post" action="upload.php" id="document-uploader" enctype="multipart/form-data" style="display: inline-block; margin-top: 10px;">
                     <!-- Hidden input for chat_id -->
                     <input type="hidden" name="chat_id" aria-label="Hidden field with Chat ID" value="<?php echo htmlspecialchars($_GET['chat_id']); ?>">
 
-                    <?php if (!empty($_SESSION['document_name'])): ?>
-                        <p style="white-space: nowrap;">Uploaded file: <span style="white-space: nowrap;color: salmon;"><?php echo htmlspecialchars($_SESSION['document_name']); ?></span>
-                            <a href="upload.php?remove=1&chat_id=<?php echo htmlspecialchars($_GET['chat_id']); ?>" style="color: blue" onclick="updatePlaceholder();">Remove</a>
-
-                            <?php if (!empty($_SESSION['document_type']) && strpos($_SESSION['document_type'], 'image/') === 0): ?>
-                                <!-- Display thumbnail for image -->
-                                <img src="<?php echo $_SESSION['document_text']; ?>" alt="Uploaded Image Thumbnail" style="max-width: 60px; max-height: 60px;margin-top: -10px;" />
-                            <?php endif; ?>
-                        </p>
-                    <?php else: ?>
-                        <label for="uploadDocument">
-                            <img src="images/paperclip.svg" style="margin-left: 30px; height: 35px; transform: rotate(45deg);" alt="Upload Document" title="Document types accepted include PDF, XML, JSON, Word, PowerPoint, Text, Markdown, and Image files (PNG, JPEG)." style="cursor: pointer; width: 20px;">
-                        </label>
-                        <input id="uploadDocument" type="file" name="uploadDocument" aria-label="File upload button" 
-                               accept=".pdf,.docx,.pptx,.txt,.md,.json,.xml,.png,.jpg,.jpeg,.gif" 
-                               style="display: none;" required onchange="this.form.submit(); updatePlaceholder();" />
-
-
-                    <?php endif; ?>
                 </form>
 <?php } ?>
 
@@ -315,7 +260,7 @@ foreach(array_keys($models) as $m) {
                     }
 ?>
 
-                <form style="display: inline-block; float: right; margin-top: 15px; margin-right: 30px;">
+                <form style="display: inline-block; float: right; margin-top:8px; margin-right: 30px;">
                     <button title="Print the existing chat session" aria-label="Print button" onclick="return printChat()" id="printButton">Print</button>
                 </form>
             </div><!-- End Chat body bottom -->
@@ -335,7 +280,6 @@ foreach(array_keys($models) as $m) {
         document.getElementById('toggleMenu').addEventListener('click', function() {
             document.querySelector('.menu').classList.toggle('active');
         });
-        var chatId = <?php echo json_encode(isset($_GET['chat_id']) ? $_GET['chat_id'] : null); ?>;
         var user = <?php echo json_encode(isset($user) ? $user : null); ?>;
         var tmr = document.getElementById('username');
 </script>
@@ -344,12 +288,13 @@ foreach(array_keys($models) as $m) {
     <script src="session_handler.js"></script>
 
 <!-- Include application-specific scripts -->
-<script src="scripts/utilities.js"></script>
-<script src="scripts/manage_chats.js"></script>
-<script src="scripts/popup.js"></script>
-<script src="scripts/ui.js"></script>
-<script src="scripts/listeners.js"></script>
-<script src="script.v2.03.js"></script>
+<script src="scripts.v2.04/utilities.js"></script>
+<script src="scripts.v2.04/manage_chats.js"></script>
+<script src="scripts.v2.04/popup.js"></script>
+<script src="scripts.v2.04/ui.js"></script>
+<script src="scripts.v2.04/listeners.js"></script>
+<script src="scripts.v2.04/user_images.js"></script>
+<script src="script.v2.04.js"></script>
 <script>
 function printChat() {
     // Prevent the default form submission behavior
